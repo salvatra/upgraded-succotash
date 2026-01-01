@@ -67,7 +67,7 @@ Q4Struct *init_Q4_structure(GHashTable *reservations, GHashTable *flights)
 {
     Q4Struct *q4 = g_new0(Q4Struct, 1);
     q4->weekly_tops = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, free_weekly_top);
-    q4->min_week = 2147483647;  // INT_MAX
+    q4->min_week = 2147483647; // INT_MAX
     q4->max_week = -2147483648; // INT_MIN
 
     // 1. Accumulate Spending per Week
@@ -181,10 +181,12 @@ void destroy_Q4_structure(Q4Struct *q4)
     }
 }
 
+
+
 // RUNTIME
 void query4(Q4Struct *q4_data, GHashTable *passengers,
-            const char *date_begin, const char *date_end,
-            FILE *output, int isSpecial)
+              const char *date_begin, const char *date_end,
+              FILE *output, int isSpecial)
 {
     if (!q4_data)
     {
@@ -270,17 +272,14 @@ void query4(Q4Struct *q4_data, GHashTable *passengers,
         Passenger *p = getPassenger(winner_doc, passengers);
         if (p)
         {
-
-            const char *output_fmt = isSpecial
-                                         ? "%09d=%s=%s=%s=%s=%d\n"
-                                         : "%09d;%s;%s;%s;%s;%d\n";
+            char separator = isSpecial ? '=' : ';';
 
             // Format DOB
             time_t dob_t = getPassengerDateOfBirth(p);
             char dob_str[12] = "";
             struct tm info;
 
-            // had to use gmtime_r directly because format_time_t
+            // had to use gmtime_r directly because format_time_t 
             // (that we have on timeutils) rejects dates before 1970.
             // gmtime_r handles negative time_t values (before 1970) correctly.
             if (gmtime_r(&dob_t, &info))
@@ -288,14 +287,18 @@ void query4(Q4Struct *q4_data, GHashTable *passengers,
                 strftime(dob_str, sizeof(dob_str), "%Y-%m-%d", &info);
             }
 
-            fprintf(output, output_fmt,
+            fprintf(output, "%09d%c%s%c%s%c%s%c%s%c%d\n",
                     getPassengerDocumentNumber(p),
+                    separator,
                     getPassengerFirstName(p),
+                    separator,
                     getPassengerLastName(p),
+                    separator,
                     dob_str,
+                    separator,
                     getPassengerNationality(p),
+                    separator,
                     max_freq);
-
             freePassenger(p);
         }
         else

@@ -1,79 +1,22 @@
 #ifndef QUERIES_H
 #define QUERIES_H
 #include <core/dataset.h>
+#include <queries/query4.h>
 #include <stdio.h>
 
 /**
- * @brief Applies specific output formatting to a string based on the special flag.
- *
- * @param isSpecial The formatting flag (0 for normal, 1 for special).
- * @param str The string to format/modify in place.
+ * @file queries.h
+ * @brief Orchestration of query execution and context management.
+ * * This module handles the "heavy lifting" of preparing data structures
+ * for query execution (Context) and running the batch mode (runAllQueries).
+ * It does NOT handle interactive output or user input parsing.
  */
-void specialize(int isSpecial, char *str);
 
 /**
- * @brief Wrapper for Query 1 execution.
- *
- * @param code Airport code.
- * @param isSpecial Formatting flag.
- * @param stream Output stream.
- * @param ds Dataset pointer.
- * @return 0 on success, 1 on failure.
+ * @brief Callback function type for performance statistics.
+ * Used by runAllQueries to report execution time per query.
  */
-int query1wrapper(char *code, int isSpecial, FILE *stream, Dataset *ds);
-
-/**
- * @brief Wrapper for Query 2 execution.
- *
- * @param number Number of aircrafts (as string).
- * @param manufacturer Manufacturer filter (optional).
- * @param stream Output stream.
- * @param aircraftsArray Array of aircrafts.
- * @param flightCounts Array of flight counts per aircraft.
- * @param isSpecial Formatting flag.
- * @return 0 on success, error code otherwise.
- */
-int query2wrapper(char *number, char *manufacturer, FILE *stream,
-                  GPtrArray *aircraftsArray, int *flightCounts, int isSpecial);
-
-/**
- * @brief Wrapper for Query 3 execution.
- *
- * @param arg1 Start date.
- * @param arg2 End date.
- * @param stream Output stream.
- * @param ds Dataset pointer.
- * @param isSpecial Formatting flag.
- * @param airportFtrees Hash table of Fenwick trees.
- * @return 0 on success, 1 on failure.
- */
-int query3wrapper(char *arg1, char *arg2, FILE *stream, Dataset *ds,
-                  int isSpecial, GHashTable *airportFtrees);
-
-/**
- * @brief Wrapper for Query 5 execution.
- *
- * @param arg1 Number of top airlines (as string).
- * @param stream Output stream.
- * @param airlineDelays List of airline delays.
- * @param isSpecial Formatting flag.
- * @return 0 on success, error code otherwise.
- */
-int query5wrapper(char *arg1, FILE *stream, GList *airlineDelays,
-                  int isSpecial);
-
-/**
- * @brief Wrapper for Query 6 execution.
- *
- * @param arg1 Nationality string.
- * @param stream Output stream.
- * @param natTable Hash table of nationality data.
- * @param isSpecial Formatting flag.
- * @return 0 on success, error code otherwise.
- */
-int query6wrapper(char *arg1, FILE *stream, GHashTable *natTable,
-                  int isSpecial);
-
+typedef void (*QueryStatsCallback)(int queryNum, int lineNum, double elapsed, void *ctx);
 /**
  * @brief Builds the context data structures required for executing queries.
  *
@@ -81,12 +24,14 @@ int query6wrapper(char *arg1, FILE *stream, GHashTable *natTable,
  * @param aircraftsArray Pointer to return the array of aircrafts.
  * @param flightCounts Pointer to return the array of flight counts.
  * @param airportFtrees Pointer to return the Fenwick trees hash table.
+ * @param q4_data Pointer to return the Query 4 data structure.
  * @param airlineDelays Pointer to return the airline delays list.
  * @param natTable Pointer to return the nationality data hash table.
  * @return 0 on success, 1 on failure.
  */
 int build_query_context(Dataset *ds, GPtrArray **aircraftsArray,
                         int **flightCounts, GHashTable **airportFtrees,
+                        Q4Struct **q4_data,
                         GList **airlineDelays, GHashTable **natTable);
 
 /**

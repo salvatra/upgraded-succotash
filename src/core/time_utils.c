@@ -97,15 +97,11 @@ time_t parse_unix_datetime(const char *dt, int *cancelFlag) {
   int min = (dt[14] - '0') * 10 + (dt[15] - '0');
 
   // Check if values are not out of bounds
-  if (m < 1 || m > 12 || d < 1 || d > 31 || h > 23 || h < 0 || min < 0 ||
-      min > 59)
-    return (time_t)-4;
-
   // Determine years since epoch (1970)
   int years_since_epoch = y - 1970;
 
   // Caculate how many of those years are leap
-  int leap_days = (years_since_epoch + 1) / 4;
+  int leap_days = (years_since_epoch >= 0) ? (years_since_epoch + 1) / 4 : (years_since_epoch - 2) / 4;
 
   // Sum past years' days with current one
   long total_days =
@@ -169,7 +165,7 @@ time_t parse_unix_date(const char *dt, int *cancelFlag) {
   int years_since_epoch = y - 1970;
 
   // Caculate how many of those years are leap
-  int leap_days = (years_since_epoch + 1) / 4;
+  int leap_days = (years_since_epoch >= 0) ? (years_since_epoch + 1) / 4 : (years_since_epoch - 2) / 4;
 
   // Sum past years' days with current one
   long total_days =

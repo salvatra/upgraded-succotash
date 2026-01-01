@@ -9,10 +9,10 @@ LDFLAGS = `pkg-config --libs glib-2.0`
 SRC_DIR = src
 OBJ_DIR = obj
 
-INT_SRC = $(SRC_DIR)/core/interactive.c
+INT_SRC = $(SRC_DIR)/interactive_main.c \
+          $(shell find $(SRC_DIR)/interactive -name '*.c')
 
-# Find source files
-CORE_SRC = $(filter-out $(INT_SRC), $(shell find $(SRC_DIR)/core $(SRC_DIR)/entities $(SRC_DIR)/queries -name '*.c')) \
+CORE_SRC = $(shell find $(SRC_DIR)/core $(SRC_DIR)/entities $(SRC_DIR)/queries -name '*.c') \
            $(SRC_DIR)/validation.c 
 
 MAIN_SRC = $(SRC_DIR)/main.c
@@ -45,12 +45,14 @@ endif
 # Default target
 all: $(TARGET_MAIN) $(TARGET_TESTES) $(TARGET_INT)
 
+# Target - interativo
+interativo: $(TARGET_INT)
+
 # Debug target: Force clean to ensure recompilation with debug flags
 # Depends on all to build everything if no specific executable is requested
 debug: clean all
 
-# Main Program Linking
-# Note: Removed $(PERF_FLAGS) from here to respect CFLAGS defined above
+# Main Program Linking (Batch Mode)
 $(TARGET_MAIN): $(MAIN_OBJ) $(CORE_OBJ)
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
@@ -58,6 +60,7 @@ $(TARGET_MAIN): $(MAIN_OBJ) $(CORE_OBJ)
 $(TARGET_TESTES): $(TESTS_OBJ) $(CORE_OBJ)
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
+# Interactive Program Linking
 $(TARGET_INT): $(INT_OBJ) $(CORE_OBJ)
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -lncurses -lhistory -lreadline -o $@
 
@@ -67,4 +70,4 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf $(OBJ_DIR) $(TARGET_MAIN) $(TARGET_TESTES)
+	rm -rf $(OBJ_DIR) $(TARGET_MAIN) $(TARGET_TESTES) $(TARGET_INT)
