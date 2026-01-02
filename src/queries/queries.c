@@ -5,14 +5,17 @@
 #include "queries/queries.h"
 #include "core/dataset.h"
 #include "core/fenwick.h"
+#include "core/indexer.h"
+#include "entities/aircrafts.h"
+#include "entities/flights.h"
+#include "entities/passengers.h"
+#include "entities/reservations.h"
 #include "queries/query1.h"
 #include "queries/query2.h"
 #include "queries/query3.h"
 #include "queries/query4.h"
 #include "queries/query5.h"
 #include "queries/query6.h"
-
-
 
 int build_query_context(Dataset *ds, GPtrArray **aircraftsArray,
                         int **flightCounts, GHashTable **airportFtrees,
@@ -41,13 +44,13 @@ int build_query_context(Dataset *ds, GPtrArray **aircraftsArray,
   GHashTable *idToIndex = g_hash_table_new(g_str_hash, g_str_equal);
   for (int i = 0; i < numAircrafts; i++)
   {
-    Aircraft *ac = g_ptr_array_index(*aircraftsArray, i);
+    const Aircraft *ac = g_ptr_array_index(*aircraftsArray, i);
     g_hash_table_insert(idToIndex, (gpointer)getAircraftId(ac), GINT_TO_POINTER(i + 1));
   }
 
   for (guint i = 0; i < flightsArray->len; i++)
   {
-    Flight *f = g_ptr_array_index(flightsArray, i);
+    const Flight *f = g_ptr_array_index(flightsArray, i);
     if (!f || strcmp(getFlightStatus(f), "Cancelled") == 0)
       continue;
 
@@ -64,7 +67,7 @@ int build_query_context(Dataset *ds, GPtrArray **aircraftsArray,
   }
   g_hash_table_destroy(idToIndex);
 
-  GHashTable *dates = getDatesTable(ds);
+  GHashTable *dates = create_date_index(ds);
   *airportFtrees = getFTrees(dates, (GHashTable *)getDatasetFlights(ds));
   g_hash_table_destroy(dates);
 
@@ -104,12 +107,12 @@ void runAllQueries(Dataset *ds, const char *filePath,
   GHashTable *idToIndex = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
   for (int i = 0; i < numAircrafts; i++)
   {
-    Aircraft *ac = g_ptr_array_index(aircraftsArray, i);
+    const Aircraft *ac = g_ptr_array_index(aircraftsArray, i);
     g_hash_table_insert(idToIndex, g_strdup(getAircraftId(ac)), GINT_TO_POINTER(i));
   }
   for (size_t i = 0; i < flightsArray->len; i++)
   {
-    Flight *f = g_ptr_array_index(flightsArray, i);
+    const Flight *f = g_ptr_array_index(flightsArray, i);
     if (!f || strcmp(getFlightStatus(f), "Cancelled") == 0)
       continue;
     const char *acId = getFlightAircraft(f);
@@ -121,7 +124,7 @@ void runAllQueries(Dataset *ds, const char *filePath,
   }
   g_hash_table_destroy(idToIndex);
 
-  GHashTable *airportDates = getDatesTable(ds);
+  GHashTable *airportDates = create_date_index(ds);
   GHashTable *airportFtrees = getFTrees(airportDates, (GHashTable *)getDatasetFlights(ds));
   GList *airlineDelays = prepareAirlineDelays(flightsArray);
   GHashTable *natTable = prepareNationalityData(getDatasetPassengers(ds),
@@ -195,7 +198,6 @@ void runAllQueries(Dataset *ds, const char *filePath,
     }
 
     GTimer *queryTimer = g_timer_new();
-
 
     if (queryNumber == 1)
     {

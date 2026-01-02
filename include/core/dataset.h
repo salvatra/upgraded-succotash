@@ -1,189 +1,99 @@
 /**
  * @file dataset.h
- * @brief Dataset management module
+ * @brief Central data repository for the application.
+ *
+ * This header defines the Dataset structure and its public interface.
+ * To reduce compilation dependencies, it uses forward declarations for entities.
+ * It strictly hides the internal implementation (GHashTables) from consumers.
  */
 
 #ifndef DATASET_H
 #define DATASET_H
 
-#include <entities/aircrafts.h>
-#include <entities/airports.h>
-#include <entities/flights.h>
-#include <entities/passengers.h>
-#include <entities/reservations.h>
 #include <glib.h>
 
+typedef struct aircraft Aircraft;
+typedef struct airport Airport;
+typedef struct flight Flight;
+typedef struct passenger Passenger;
+typedef struct reservation Reservation;
+// Note: AirportPassengerStats is defined in reservations.h, treating as opaque here if needed.
+
 /**
- * @brief Opaque structure representing the main dataset containing all
- * application data.
- *
- * It stores all information about flights, passengers, airports, aicrafts and
- * reservations.
+ * @brief Opaque structure representing the entire dataset.
  */
 typedef struct dataset Dataset;
 
 /**
- * @brief Opaque structure representing date-related information used for
- * statistical queries.
- *
- * It's used to hold information on distinct flight dates as well as data which
- * allows to check such dates.
+ * @brief Opaque structure for Date indexing (Query 3).
  */
 typedef struct datesinfo DatesInfo;
 
 /**
  * @brief Initializes a new, empty Dataset.
- *
- * Creates, allocates and initializes with NULL a new Dataset structure.
- *
- * @return A pointer to the newly allocated dataset.
+ * @return A pointer to the allocated Dataset.
  */
 Dataset *initDataset(void);
 
 /**
- * @brief Loads all data from CSV files into the dataset.
+ * @brief Loads all data from CSV files into the Dataset.
  *
- * This function coordinates the parsing and loading of flights, passengers,
- * airports, aircrafts and reservations from the specified directory by calling
- * lower-level parsing functions and populating the provided Dataset structure
- * with the data contained therein. It also allows the logging of execution time
- * for testing purposes.
- *
- * @param ds A pointer to the Dataset structure to populate.
- * @param errorsFlag A pointer to an integer that will be updated to indicate if
- * any errors occurred during loading.
- * @param filePath The path to the directory containing the CSV data files.
- * @param enable_timing If TRUE, performance timing information may be logged.
+ * @param ds The dataset to populate.
+ * @param errorsFlag Pointer to an integer to track if errors occurred during parsing.
+ * @param filePath The directory path containing the CSV files.
+ * @param enable_timing If TRUE, prints loading times to stdout.
  */
 void loadAllDatasets(Dataset *ds, gint *errorsFlag, const char *filePath,
                      gboolean enable_timing);
 
 /**
- * @brief Frees all memory associated with a Dataset.
- *
- * This includes freeing all hash tables and their contained data as well as the
- * Dataset structure.
- *
- * @param ds A pointer to the Dataset to be cleaned up.
+ * @brief Frees all memory associated with the Dataset and its entities.
+ * @param ds The dataset to destroy.
  */
 void cleanupDataset(Dataset *ds);
 
-/**
- * @brief Retrieves the hash table containing flight data.
- *
- * @param ds A pointer to the Dataset.
- * @return A const pointer to the GHashTable containing flights.
- */
-const GHashTable *getDatasetFlights(Dataset *ds);
+// All of thesegetDatasetEntity are going away real soon
 
 /**
- * @brief Retrieves the hash table containing passenger data.
- *
- * @param ds A pointer to the Dataset.
- * @return A const pointer to the GHashTable containing passengers.
+ * @brief Retrieves the underlying Aircraft hash table (Read-Only).
  */
-const GHashTable *getDatasetPassengers(Dataset *ds);
+const GHashTable *getDatasetAircrafts(const Dataset *ds);
 
 /**
- * @brief Retrieves the hash table containing airport data.
- *
- * @param ds A pointer to the Dataset.
- * @return A const pointer to the GHashTable containing airports.
+ * @brief Retrieves the underlying Airport hash table (Read-Only).
  */
-const GHashTable *getDatasetAirports(Dataset *ds);
+const GHashTable *getDatasetAirports(const Dataset *ds);
 
 /**
- * @brief Retrieves the hash table containing aircraft data.
- *
- * @param ds A pointer to the Dataset.
- * @return A const pointer to the GHashTable containing aircrafts.
+ * @brief Retrieves the underlying Flight hash table (Read-Only).
  */
-const GHashTable *getDatasetAircrafts(Dataset *ds);
+const GHashTable *getDatasetFlights(const Dataset *ds);
 
 /**
- * @brief Retrieves the hash table containing reservation data.
- *
- * @param ds A pointer to the Dataset.
- * @return A const pointer to the GHashTable containing reservations.
+ * @brief Retrieves the underlying Passenger hash table (Read-Only).
  */
-const GHashTable *getDatasetReservations(Dataset *ds);
+const GHashTable *getDatasetPassengers(const Dataset *ds);
 
 /**
- * @brief Retrieves the hash table containing aiports data used for the new
- * query1.
- *
- * @param ds A pointer to the Dataset.
- * @return A const pointer to the GHashTable containing aiportsStats.
+ * @brief Retrieves the underlying Reservation hash table (Read-Only).
  */
-const GHashTable *getDatasetAiportStats(Dataset *ds);
+const GHashTable *getDatasetReservations(const Dataset *ds);
 
 /**
- * @brief Retrieves the hash table storing date information.
- *
- * This table is used for optimizing queries that involve date filtering or
- * sorting as well as the construction of the Fenwick Trees.
- *
- * @param ds A pointer to the Dataset.
- * @return A pointer to the GHashTable containing date info.
+ * @brief Retrieves the underlying Airport Statistics hash table (Read-Only).
  */
-GHashTable *getDatesTable(Dataset *ds);
+const GHashTable *getDatasetAiportStats(const Dataset *ds);
 
-/**
- * @brief Frees memory associated with DatesInfo structure.
- *
- * @param data A pointer to the DatesInfo structure to be freed.
- */
-void freeDatesInfo(gpointer data);
 
-/**
- * @brief Retrieves a DatesInfo strcuture from a generic pointer.
- *
- * @param data A generic pointer, typically from a hash table value.
- * @return A const pointer to the DatesInfo structure.
- */
-const DatesInfo *getDatesInfo(gpointer *data);
+const Flight *dataset_get_flight(const Dataset *ds, const char *id);
+const Airport *dataset_get_airport(const Dataset *ds, const char *code);
+const Aircraft *dataset_get_aircraft(const Dataset *ds, const char *id);
+const Passenger *dataset_get_passenger(const Dataset *ds, int id);
+const Reservation *dataset_get_reservation(const Dataset *ds, const char *id);
 
-/**
- * @brief Retrieves the array of dates associated with a DatesInfo structure.
- *
- * @param di A pointer to the DatesInfo structure.
- * @return A const pointer to a GArray containing dates.
- */
-const GArray *getDiDates(DatesInfo *di);
-
-/**
- * @brief Retrieves the set of dates (as a hash table) associated with a
- * DatesInfo structure.
- *
- * @param di A pointer to the DatesInfo structure.
- * @return A const pointer to a GHashTable representing the set of dates.
- */
-const GHashTable *getDiSet(DatesInfo *di);
-
-/**
- * @brief Retrieves the array of distinct airport codes.
- *
- * @param ds A pointer to the Dataset.
- * @return A GPtrArray pointer containing airport code strings.
- */
+// aux
 GPtrArray *get_dataset_airport_codes(Dataset *ds);
-
-/**
- * @brief Retrieves the array of distinct aircraft manufacturers.
- *
- * @param ds A pointer to the Dataset.
- * @return A GPtrArray pointer containing manufacturer strings.
- */
 GPtrArray *get_dataset_aircraft_manufacturers(Dataset *ds);
-
-/**
- * @brief Retrieves the array of distinct passenger nationalities.
- *
- * @param ds A pointer to the Dataset.
- * @return A GPtrArray pointer containing nationality strings.
- */
 GPtrArray *get_dataset_nationalities(Dataset *ds);
 
-// gboolean validateDataset(Dataset *ds);
-
-#endif
+#endif // DATASET_H

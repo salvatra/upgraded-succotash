@@ -4,13 +4,14 @@
 
 gchar *query1(const gchar *code,
               const GHashTable *airports,
-              const GHashTable *airportStats) {
+              const GHashTable *airportStats)
+{
 
-  Airport *airport = getAirport(code, airports);
+  const Airport *airport = getAirport(code, airports);
   if (!airport)
     return NULL;
 
-  AirportPassengerStats *s =
+  const AirportPassengerStats *s =
       g_hash_table_lookup((GHashTable *)airportStats, code);
 
   long arrivals = getAirportArrivals(s);
@@ -29,33 +30,5 @@ gchar *query1(const gchar *code,
       bufArr, ";",
       bufDep,
       NULL);
-    freeAirport(airport);
   return result;
 }
-
-// Query 1 antiga
-/*
-gchar *query1(gchar *code, const GHashTable *airportsTable) {
-  if (!code || !airportsTable)
-    return NULL;
-
-  Airport *airport = getAirport(code, airportsTable);
-  if (!airport)
-    return NULL;
-
-  gchar *name = getAirportName(airport);
-  gchar *city = getAirportCity(airport);
-  gchar *country = getAirportCountry(airport);
-  gchar *type = getAirportType(airport);
-
-  name = name ? name : "";
-  city = city ? city : "";
-  country = country ? country : "";
-  type = type ? type : "";
-
-  gchar *result =
-      g_strconcat(code, ",", name, ",", city, ",", country, ",", type, NULL);
-  freeAirport((gpointer)airport);
-  return result;
-}
-  */

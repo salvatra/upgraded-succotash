@@ -12,52 +12,58 @@
 #include <validation.h>
 
 // Used only because it only needs name, city and country (airport)
-gchar *query3Aux(gchar *code, const GHashTable *airportsTable) {
+gchar *query3Aux(const gchar *code, const GHashTable *airportsTable)
+{
   if (!code || !airportsTable)
     return NULL;
 
-  Airport *airport = getAirport(code, airportsTable);
+  const Airport *airport = getAirport(code, airportsTable);
   if (!airport)
     return NULL;
 
-  gchar *name = getAirportName(airport);
-  gchar *city = getAirportCity(airport);
-  gchar *country = getAirportCountry(airport);
+  const gchar *name = getAirportName(airport);
+  const gchar *city = getAirportCity(airport);
+  const gchar *country = getAirportCountry(airport);
 
   name = name ? name : "";
   city = city ? city : "";
   country = country ? country : "";
 
   gchar *result = g_strconcat(code, ";", name, ";", city, ";", country, NULL);
-  freeAirport((gpointer)airport);
   return result;
 }
 
 gchar *query3(GHashTable *airportFtrees, GHashTable *airports,
-              const char *startStr, const char *endStr) {
+              const char *startStr, const char *endStr)
+{
   time_t start_date = parse_unix_date(startStr, NULL);
   time_t end_date = parse_unix_date(endStr, NULL);
 
-  gchar *bestAirport = NULL;
+  const gchar *bestAirport = NULL;
   int bestCount = 0;
 
   GHashTableIter iter;
   gpointer key, val;
   g_hash_table_iter_init(&iter, airportFtrees);
-  while (g_hash_table_iter_next(&iter, &key, &val)) {
-    gchar *code = (gchar *)key;
+  while (g_hash_table_iter_next(&iter, &key, &val))
+  {
+    const gchar *code = (const gchar *)key;
     FTree *tree = getFTree(val);
     int n = getFtreeN(tree);
     time_t *dates = getFtreeDates(tree);
 
     // Binary search for start index (1-based)
     int lower = 0, upper = n - 1, start = n + 1;
-    while (lower <= upper) {
+    while (lower <= upper)
+    {
       int mid = (lower + upper) / 2;
-      if (compare_time_t(dates[mid], start_date) >= 0) {
+      if (compare_time_t(dates[mid], start_date) >= 0)
+      {
         start = mid + 1;
         upper = mid - 1;
-      } else {
+      }
+      else
+      {
         lower = mid + 1;
       }
     }
@@ -66,12 +72,16 @@ gchar *query3(GHashTable *airportFtrees, GHashTable *airports,
     lower = 0;
     upper = n - 1;
     int end = 0;
-    while (lower <= upper) {
+    while (lower <= upper)
+    {
       int mid = (lower + upper) / 2;
-      if (compare_time_t(dates[mid], end_date) <= 0) {
+      if (compare_time_t(dates[mid], end_date) <= 0)
+      {
         end = mid + 1;
         lower = mid + 1;
-      } else {
+      }
+      else
+      {
         upper = mid - 1;
       }
     }
@@ -80,7 +90,8 @@ gchar *query3(GHashTable *airportFtrees, GHashTable *airports,
 
     if (count > bestCount ||
         (count == bestCount &&
-         (bestAirport == NULL || strcmp(code, bestAirport) < 0))) {
+         (bestAirport == NULL || strcmp(code, bestAirport) < 0)))
+    {
       bestAirport = code;
       bestCount = count;
     }

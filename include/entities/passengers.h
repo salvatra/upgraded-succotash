@@ -1,125 +1,109 @@
+/**
+ * @file passengers.h
+ * @brief Passenger entity definition and management.
+ *
+ * This header defines the interface for the Passenger entity.
+ * It is optimized for zero-copy access, ensuring high performance during queries.
+ * Memory is managed internally by the dataset container.
+ */
+
 #ifndef PASSENGERS_H
 #define PASSENGERS_H
 
 #include <glib.h>
+#include <time.h>
 
 /**
  * @brief Opaque structure representing a passenger (user).
+ *
+ * Internal layout is hidden. Users interact via read-only accessors.
  */
 typedef struct passenger Passenger;
 
 /**
  * @brief Frees the memory allocated for a Passenger structure.
  *
- * This function is intended to be used as a GDestroyNotify callback for
- * GHashTable or other GLib data structures.
+ * Intended for use as a GDestroyNotify callback.
+ * Frees internal strings and the structure itself.
  *
- * @param data A pointer to the Passenger structure to be freed.
+ * @param data A generic pointer to the Passenger structure.
  */
 void freePassenger(gpointer data);
 
 /**
  * @brief Reads passenger data from a CSV file and populates a hash table.
  *
- * @param filename The path to the CSV file containing passenger data.
- * @param errorsFlag A pointer to an integer that will be set to 1 if any
- * invalid lines are encountered.
- * @return A GHashTable where keys are passenger document numbers (as integers?
- * or strings? Implementation suggests int key or string key, header implies
- * getPassenger takes int doc number) and values are Passenger pointers.
+ * Parses the CSV, validates records, and stores valid passengers.
+ * Also collects unique nationalities into a provided list for statistical purposes.
+ *
+ * @param filename The path to the CSV file.
+ * @param errorsFlag Pointer to an integer updated to 1 if invalid lines are found.
+ * @param nationalities_list Optional GPtrArray to store unique nationality strings.
+ * @return A GHashTable (Key: Document ID (gpointer/int), Value: Passenger*).
+ * Returns NULL on failure.
  */
 GHashTable *readPassengers(const gchar *filename, gint *errorsFlag, GPtrArray *nationalities_list);
 
 /**
- * @brief Retrieves a copy of a passenger from the hash table by their document
- * number.
+ * @brief Retrieves a read-only reference to a passenger.
  *
- * This function looks up the passenger in the provided hash table.
+ * **PERFORMANCE CRITICAL:** Returns a direct pointer to the data in the hash table.
+ * NO copying or allocation is performed.
  *
- * @param documentNumber The document number of the passenger to retrieve.
+ * @warning The returned pointer is owned by the dataset. DO NOT free or modify it.
+ *
+ * @param documentNumber The passenger's document number (used as key).
  * @param passengersTable The hash table containing passenger data.
- * @return A pointer to the Passenger structure, or NULL if not found.
+ * @return A const pointer to the Passenger structure, or NULL if not found.
  */
-Passenger *getPassenger(int documentNumber, GHashTable *passengersTable);
+const Passenger *getPassenger(int documentNumber, const GHashTable *passengersTable);
 
 /**
- * @brief Gets the document number of a passenger.
+ * @brief Gets the passenger's document number.
  *
- * @param p A pointer to the Passenger structure.
- * @return The passenger's document number.
+ * @param p Pointer to the constant Passenger structure.
+ * @return The document number as an integer.
  */
-int getPassengerDocumentNumber(Passenger *p);
+int getPassengerDocumentNumber(const Passenger *p);
 
 /**
- * @brief Gets the first name of a passenger.
+ * @brief Gets the passenger's first name.
  *
- * @param p A pointer to the Passenger structure.
- * @return The first name string.
+ * @param p Pointer to the constant Passenger structure.
+ * @return Constant string of the first name. Owned by the struct.
  */
 const gchar *getPassengerFirstName(const Passenger *p);
 
 /**
- * @brief Gets the last name of a passenger.
+ * @brief Gets the passenger's last name.
  *
- * @param p A pointer to the Passenger structure.
- * @return The last name string.
+ * @param p Pointer to the constant Passenger structure.
+ * @return Constant string of the last name. Owned by the struct.
  */
 const gchar *getPassengerLastName(const Passenger *p);
 
 /**
- * @brief Gets the date of birth of a passenger.
+ * @brief Gets the passenger's date of birth.
  *
- * @param p A pointer to the Passenger structure.
- * @return The date of birth as time_t.
+ * @param p Pointer to the constant Passenger structure.
+ * @return Date of birth as time_t.
  */
 time_t getPassengerDateOfBirth(const Passenger *p);
 
 /**
- * @brief Gets the nationality of a passenger.
+ * @brief Gets the passenger's nationality.
  *
- * @param p A pointer to the Passenger structure.
- * @return The nationality string.
+ * @param p Pointer to the constant Passenger structure.
+ * @return Constant string of the nationality. Owned by the struct.
  */
 const gchar *getPassengerNationality(const Passenger *p);
 
 /**
- * @brief Gets the gender of a passenger.
+ * @brief Gets the passenger's gender.
  *
- * @param p A pointer to the Passenger structure.
- * @return The gender character.
+ * @param p Pointer to the constant Passenger structure.
+ * @return Gender as a char.
  */
 char getPassengerGender(const Passenger *p);
-
-/**
- * @brief Gets the email of a passenger.
- *
- * @param p A pointer to the Passenger structure.
- * @return The email string.
- */
-const gchar *getPassengerEmail(const Passenger *p);
-
-/**
- * @brief Gets the phone number of a passenger.
- *
- * @param p A pointer to the Passenger structure.
- * @return The phone number string.
- */
-const gchar *getPassengerPhone(const Passenger *p);
-
-/**
- * @brief Gets the address of a passenger.
- *
- * @param p A pointer to the Passenger structure.
- * @return The address string.
- */
-const gchar *getPassengerAddress(const Passenger *p);
-
-/**
- * @brief Gets the photo URL of a passenger.
- *
- * @param p A pointer to the Passenger structure.
- * @return The photo URL string.
- */
-const gchar *getPassengerPhoto(const Passenger *p);
 
 #endif // !PASSENGERS_H

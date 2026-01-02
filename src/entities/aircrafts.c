@@ -6,16 +6,17 @@
 #include <string.h>
 #include <validation.h>
 
-struct aircraft {
+struct aircraft
+{
   gchar *id;
   gchar *manufacturer;
   gchar *model;
-  // gint year;
-  // gint capacity;
-  // gint range;
 };
 
-void freeAircraft(gpointer data) {
+void freeAircraft(gpointer data)
+{
+  if (!data)
+    return;
   Aircraft *acrft = data;
   g_free(acrft->id);
   g_free(acrft->manufacturer);
@@ -23,21 +24,22 @@ void freeAircraft(gpointer data) {
   g_free(acrft);
 }
 
-// Used to clean the invalid line
-void cleanupAircrafts(Aircraft *data, gchar **fields) {
+// Helper to clean up partial data on error
+static void cleanupAircraftData(Aircraft *data)
+{
   if (data)
     freeAircraft(data);
-  if (fields)
-    g_strfreev(fields);
 }
 
 GHashTable *readAircrafts(const gchar *filename, gint *errorsFlag,
-                          GPtrArray *manufacturers) {
+                          GPtrArray *manufacturers)
+{
   GHashTable *aircraftTable =
       g_hash_table_new_full(g_str_hash, g_str_equal, g_free, freeAircraft);
 
   FILE *aircrafts = fopen(filename, "r");
-  if (!aircrafts) {
+  if (!aircrafts)
+  {
     g_hash_table_destroy(aircraftTable);
     return NULL;
   }
@@ -48,20 +50,26 @@ GHashTable *readAircrafts(const gchar *filename, gint *errorsFlag,
   gchar *headerLine = NULL;
 
   // Read header
-  if ((read = getline(&line, &len, aircrafts)) != -1) {
+  if ((read = getline(&line, &len, aircrafts)) != -1)
+  {
     g_strchomp(line);
     headerLine = g_strdup(line);
-  } else {
+  }
+  else
+  {
+    free(line);
     fclose(aircrafts);
     g_hash_table_destroy(aircraftTable);
     return NULL;
   }
 
-  while ((read = getline(&line, &len, aircrafts)) != -1) {
+  while ((read = getline(&line, &len, aircrafts)) != -1)
+  {
     g_strchomp(line);
 
     ParsedAircraftF *pf = parseAircraftLineRaw(line);
-    if (!parsed_aircraft_ok(pf)) {
+    if (!parsed_aircraft_ok(pf))
+    {
       parsed_aircraft_free(pf);
       continue;
     }
@@ -73,12 +81,17 @@ GHashTable *readAircrafts(const gchar *filename, gint *errorsFlag,
 
     Aircraft *data = g_new0(Aircraft, 1);
 
-    if (!checkAircraftId(fields[0]))
+    if (!fields[0] || !checkAircraftId(fields[0]))
+    {
       invalid = TRUE;
-    else {
+    }
+    else
+    {
       data->id = g_strdup(fields[0]);
 
-      if (manufacturers && !g_hash_table_contains(aircraftTable, fields[1])) {
+      if (manufacturers && fields[1] &&
+          !g_hash_table_contains(aircraftTable, fields[0]))
+      {
         g_ptr_array_add(manufacturers, g_strdup(fields[1]));
       }
 
@@ -90,10 +103,12 @@ GHashTable *readAircrafts(const gchar *filename, gint *errorsFlag,
       if (!checkInt(fields[4]) || !checkInt(fields[5]))
         invalid = TRUE;
     }
-    if (invalid) {
+
+    if (invalid)
+    {
       logInvalidLine("resultados/aircrafts_errors.csv", headerLine,
                      parsed_aircraft_line(pf));
-      cleanupAircrafts(data, NULL);
+      cleanupAircraftData(data);
       *errorsFlag = 1;
       parsed_aircraft_free(pf);
       continue;
@@ -108,53 +123,26 @@ GHashTable *readAircrafts(const gchar *filename, gint *errorsFlag,
   fclose(aircrafts);
   return aircraftTable;
 }
-// Aircraft *getAircraft(const gchar *id, GHashTable *aircraftsTable) {
-//  return g_hash_table_lookup(aircraftsTable, id);
-// }
 
-Aircraft *getAircraft(const gchar *id, const GHashTable *aircraftsTable) {
-  Aircraft *original = g_hash_table_lookup((GHashTable *)aircraftsTable, id);
-  Aircraft *aircraft = g_new(Aircraft, 1);
-
-  aircraft->id = strdup(id);
-  aircraft->manufacturer = strdup(original->manufacturer);
-  aircraft->model = strdup(original->model);
-
-  return aircraft;
-}
-
-gchar *getAircraftId(Aircraft *a) {
-  if (!a)
+const Aircraft *getAircraft(const gchar *id, const GHashTable *aircraftsTable)
+{
+  if (!id || !aircraftsTable)
     return NULL;
-  return a->id;
+
+  return (const Aircraft *)g_hash_table_lookup((GHashTable *)aircraftsTable, id);
 }
 
-gchar *getAircraftManufacturer(Aircraft *a) {
-  if (!a)
-    return NULL;
-  return a->manufacturer;
+const gchar *getAircraftId(const Aircraft *a)
+{
+  return a ? a->id : NULL;
 }
 
-gchar *getAircraftModel(Aircraft *a) {
-  if (!a)
-    return NULL;
-  return a->model;
+const gchar *getAircraftManufacturer(const Aircraft *a)
+{
+  return a ? a->manufacturer : NULL;
 }
 
-// gint getAircraftYear(const Aircraft *a) {
-//   if (!a)
-//     return -1;
-//   return a->year;
-// }
-
-// gint getAircraftCapacity(const Aircraft *a) {
-//   if (!a)
-//     return -1;
-//   return a->capacity;
-// }
-
-// gint getAircraftRange(const Aircraft *a) {
-//   if (!a)
-//     return -1;
-//   return a->range;
-// }
+const gchar *getAircraftModel(const Aircraft *a)
+{
+  return a ? a->model : NULL;
+}

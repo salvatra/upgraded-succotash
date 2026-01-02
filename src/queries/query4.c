@@ -5,6 +5,7 @@
 #include <entities/passengers.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #define SECONDS_IN_WEEK 604800
 
@@ -29,10 +30,6 @@ typedef struct
 } PassengerSpend;
 
 // --- Helper: Date to Week Index ---
-// Unix Epoch (1970-01-01) was a Thursday.
-// To align weeks to start on SUNDAY:
-// Adding 4 days (345600 seconds!) shifts the epoch reference so that
-// index changes occur on Sundays as per no relatório.
 static int get_week_index(time_t timestamp)
 {
     if (timestamp < 0)
@@ -41,8 +38,6 @@ static int get_week_index(time_t timestamp)
 }
 
 // Sorting math and stuff
-// 1. Spend DESC
-// 2. ID ASC (so like a tie-breaker)
 static gint compare_spends(gconstpointer a, gconstpointer b)
 {
     const PassengerSpend *p1 = a;
@@ -67,7 +62,7 @@ Q4Struct *init_Q4_structure(GHashTable *reservations, GHashTable *flights)
 {
     Q4Struct *q4 = g_new0(Q4Struct, 1);
     q4->weekly_tops = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, free_weekly_top);
-    q4->min_week = 2147483647; // INT_MAX
+    q4->min_week = 2147483647;  // INT_MAX
     q4->max_week = -2147483648; // INT_MIN
 
     // 1. Accumulate Spending per Week
@@ -85,14 +80,12 @@ Q4Struct *init_Q4_structure(GHashTable *reservations, GHashTable *flights)
         if (!flight_ids || !flight_ids[0])
             continue;
 
-        // Use the first flight to determine the week
-        Flight *f = getFlight(flight_ids[0], flights);
+        const Flight *f = getFlight(flight_ids[0], flights);
         if (!f)
             continue;
 
         // Use scheduled departure for week calculation
         time_t departure = getFlightDeparture(f);
-        freeFlight(f); // getFlight returns a deep copy, we shall now free it
 
         if (departure <= 0)
             continue;
@@ -167,7 +160,7 @@ Q4Struct *init_Q4_structure(GHashTable *reservations, GHashTable *flights)
         g_array_free(arr, TRUE);
     }
 
-    // Free the tmporary maps
+    // Free the temporary maps
     g_hash_table_destroy(temp_week_map);
     return q4;
 }
@@ -181,12 +174,10 @@ void destroy_Q4_structure(Q4Struct *q4)
     }
 }
 
-
-
 // RUNTIME
 void query4(Q4Struct *q4_data, GHashTable *passengers,
-              const char *date_begin, const char *date_end,
-              FILE *output, int isSpecial)
+            const char *date_begin, const char *date_end,
+            FILE *output, int isSpecial)
 {
     if (!q4_data)
     {
@@ -197,7 +188,6 @@ void query4(Q4Struct *q4_data, GHashTable *passengers,
     int start_w, end_w;
 
     // 1. Determine week range
-    // Using parse_unix_date from time_utils.c
     if (date_begin && strlen(date_begin) > 0)
     {
         time_t t = parse_unix_date(date_begin, NULL);
@@ -269,7 +259,7 @@ void query4(Q4Struct *q4_data, GHashTable *passengers,
     // 4. Output
     if (winner_doc != -1)
     {
-        Passenger *p = getPassenger(winner_doc, passengers);
+        const Passenger *p = getPassenger(winner_doc, passengers);
         if (p)
         {
             char separator = isSpecial ? '=' : ';';
@@ -279,9 +269,6 @@ void query4(Q4Struct *q4_data, GHashTable *passengers,
             char dob_str[12] = "";
             struct tm info;
 
-            // had to use gmtime_r directly because format_time_t 
-            // (that we have on timeutils) rejects dates before 1970.
-            // gmtime_r handles negative time_t values (before 1970) correctly.
             if (gmtime_r(&dob_t, &info))
             {
                 strftime(dob_str, sizeof(dob_str), "%Y-%m-%d", &info);
@@ -299,7 +286,6 @@ void query4(Q4Struct *q4_data, GHashTable *passengers,
                     getPassengerNationality(p),
                     separator,
                     max_freq);
-            freePassenger(p);
         }
         else
         {

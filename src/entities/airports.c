@@ -5,42 +5,43 @@
 #include <string.h>
 #include <validation.h>
 
-struct airport {
+struct airport
+{
   gchar *code;
   gchar *name;
   gchar *city;
   gchar *country;
-  // gdouble latitude;
-  // gdouble longitude;
-  // gchar *icao;
   gchar *type;
 };
 
-void freeAirport(gpointer data) {
+void freeAirport(gpointer data)
+{
+  if (!data)
+    return;
   Airport *airport = data;
   g_free(airport->code);
   g_free(airport->city);
   g_free(airport->country);
-  // g_free(airport->icao);
   g_free(airport->name);
   g_free(airport->type);
   g_free(airport);
 }
 
-void cleanupAirport(Airport *data, gchar **fields) {
+static void cleanupAirportData(Airport *data)
+{
   if (data)
     freeAirport(data);
-  if (fields)
-    g_strfreev(fields);
 }
 
-GHashTable *readAirports(const gchar *filename, gint *errosFlag,
-                         GPtrArray *codes) {
+GHashTable *readAirports(const gchar *filename, gint *errorsFlag,
+                         GPtrArray *codes)
+{
   GHashTable *airportsTable =
       g_hash_table_new_full(g_str_hash, g_str_equal, g_free, freeAirport);
 
   FILE *file = fopen(filename, "r");
-  if (!file) {
+  if (!file)
+  {
     g_hash_table_destroy(airportsTable);
     return NULL;
   }
@@ -50,20 +51,26 @@ GHashTable *readAirports(const gchar *filename, gint *errosFlag,
   ssize_t read;
   gchar *headerLine = NULL;
 
-  if ((read = getline(&line, &len, file)) != -1) {
+  if ((read = getline(&line, &len, file)) != -1)
+  {
     g_strchomp(line);
     headerLine = g_strdup(line);
-  } else {
+  }
+  else
+  {
+    free(line);
     fclose(file);
     g_hash_table_destroy(airportsTable);
     return NULL;
   }
 
-  while ((read = getline(&line, &len, file)) != -1) {
+  while ((read = getline(&line, &len, file)) != -1)
+  {
     g_strchomp(line);
 
     ParsedAirportF *pf = parseAirportLineRaw(line);
-    if (!parsed_airport_ok(pf)) {
+    if (!parsed_airport_ok(pf))
+    {
       parsed_airport_free(pf);
       continue;
     }
@@ -76,16 +83,20 @@ GHashTable *readAirports(const gchar *filename, gint *errosFlag,
     Airport *data = g_new0(Airport, 1);
 
     if (!fields[0] || !checkAirportCode(fields[0]))
+    {
       invalid = TRUE;
-    else {
-      if (codes && !g_hash_table_contains(airportsTable, fields[0])) {
+    }
+    else
+    {
+      if (codes && !g_hash_table_contains(airportsTable, fields[0]))
+      {
         g_ptr_array_add(codes, g_strdup(fields[0]));
       }
-
       data->code = g_strdup(fields[0]);
     }
 
-    if (!invalid) {
+    if (!invalid)
+    {
       data->name = fields[1] ? g_strdup(fields[1]) : NULL;
       data->city = fields[2] ? g_strdup(fields[2]) : NULL;
       data->country = fields[3] ? g_strdup(fields[3]) : NULL;
@@ -99,11 +110,12 @@ GHashTable *readAirports(const gchar *filename, gint *errosFlag,
         data->type = g_strdup(fields[7]);
     }
 
-    if (invalid) {
+    if (invalid)
+    {
       logInvalidLine("resultados/airports_errors.csv", headerLine,
                      parsed_airport_line(pf));
-      *errosFlag = 1;
-      cleanupAirport(data, NULL);
+      *errorsFlag = 1;
+      cleanupAirportData(data);
       parsed_airport_free(pf);
       continue;
     }
@@ -118,71 +130,35 @@ GHashTable *readAirports(const gchar *filename, gint *errosFlag,
   return airportsTable;
 }
 
-// NOTE: Getters for Airport fields
-
-Airport *getAirport(const gchar *code, const GHashTable *airportsTable) {
-  if (!code || !airportsTable) {
+const Airport *getAirport(const gchar *code, const GHashTable *airportsTable)
+{
+  if (!code || !airportsTable)
     return NULL;
-  }
 
-  Airport *original = g_hash_table_lookup((GHashTable *)airportsTable, code);
-  if (!original) {
-    // Key not found
-    return NULL;
-  }
-  Airport *airport = g_new(Airport, 1);
-
-  airport->code = strdup(code);
-  airport->name = strdup(original->name);
-  airport->city = strdup(original->city);
-  airport->country = strdup(original->country);
-  airport->type = strdup(original->type);
-
-  return airport;
+  return (const Airport *)g_hash_table_lookup((GHashTable *)airportsTable, code);
 }
 
-gchar *getAirportCode(Airport *a) {
-  if (!a)
-    return NULL;
-  return a->code;
+const gchar *getAirportCode(const Airport *a)
+{
+  return a ? a->code : NULL;
 }
 
-gchar *getAirportName(Airport *a) {
-  if (!a)
-    return NULL;
-  return a->name;
+const gchar *getAirportName(const Airport *a)
+{
+  return a ? a->name : NULL;
 }
 
-gchar *getAirportCity(Airport *a) {
-  if (!a)
-    return NULL;
-  return a->city;
+const gchar *getAirportCity(const Airport *a)
+{
+  return a ? a->city : NULL;
 }
 
-gchar *getAirportCountry(Airport *a) {
-  if (!a)
-    return NULL;
-  return a->country;
+const gchar *getAirportCountry(const Airport *a)
+{
+  return a ? a->country : NULL;
 }
 
-// gdouble getAirportLatitude(const Airport *a) {
-//   if (!a) return -1;
-// return a->latitude;
-// }
-
-// gdouble getAirportLongitude(const Airport *a) {
-//   if (!a) return -1;
-//   return a->longitude;
-// }
-
-// const gchar *getAirportICAO(const Airport *a) {
-//   if (!a) return NULL;
-//   return a->icao;
-// }
-
-gchar *getAirportType(Airport *a) {
-  if (!a)
-    return NULL;
-  return a->type;
+const gchar *getAirportType(const Airport *a)
+{
+  return a ? a->type : NULL;
 }
-
