@@ -1,9 +1,13 @@
 /**
  * @file reservations.h
- * @brief Reservation entity definition and management.
+ * @brief Definition and management logic for Reservation entities.
  *
- * This header defines the interface for the Reservation entity.
- * It strictly enforces encapsulation and zero-copy access for maximum performance.
+ * This module defines the Reservation entity, which serves as the associative link
+ * between Passengers (Users) and Flights. It handles parsing, validation, and storage logic.
+ *
+ * @note This header strictly enforces encapsulation and zero-copy access to ensure
+ * maximum performance, especially given that reservations often contain complex
+ * lists of flight references.
  */
 
 #ifndef RESERVATIONS_H
@@ -12,113 +16,107 @@
 #include <glib.h>
 
 /**
- * @brief Opaque structure representing a flight reservation.
+ * @brief Opaque structure representing a Flight Reservation.
+ *
+ * Encapsulates the Booking ID, the Passenger (User ID), the total Price,
+ * and the list of flight segments associated with this booking.
+ * The internal memory layout is hidden to preserve encapsulation.
  */
 typedef struct reservation Reservation;
 
 /**
- * @brief Opaque structure for holding airport passenger statistics.
- * (Note: Ideally this should move to a statistics module in the future,
- * but kept here for now to maintain compilation).
- */
-typedef struct AiportPassengStats AirportPassengerStats;
-
-/**
- * @brief Frees the memory allocated for a Reservation structure.
+ * @brief Memory cleanup function for a Reservation structure.
  *
- * Intended as a GDestroyNotify callback.
+ * Designed to be used as a @c GDestroyNotify callback for @c GHashTable.
+ * It performs a deep free, releasing the internal string array of flight IDs
+ * and the structure itself.
  *
- * @param data A generic pointer to the Reservation structure.
+ * @param data A generic pointer to the Reservation structure to be freed.
+ * If @p data is NULL, does nothing.
  */
 void freeReservations(gpointer data);
 
 /**
- * @brief Reads reservation data from a CSV file and populates a hash table.
+ * @brief Parses the Reservations CSV file and populates a Hash Table.
  *
- * Parses reservations, validates them against passengers and flights, and checks
- * logical consistency (e.g., flight connections).
+ * This function handles file I/O, CSV parsing, and **Cross-Entity Validation**.
+ * It ensures data consistency by verifying relationships:
+ * - **User Existence:** Checks if `user_id` exists in @p passengersTable.
+ * - **Flight Existence:** Checks if every `flight_id` in the reservation exists in @p flightsTable.
+ * - **Date Consistency:** Validates if flight dates follow a logical chronological order (if implemented).
  *
- * @param filename Path to the CSV file.
- * @param passengersTable Hash table of existing passengers (for validation).
- * @param flightsTable Hash table of existing flights (for validation).
- * @param errorsFlag Pointer to integer, set to 1 if invalid lines are found.
- * @return A GHashTable (Key: Reservation ID, Value: Reservation*). Returns NULL on failure.
+ * @param filename The full path to the `reservations.csv` file.
+ * @param passengersTable A Hash Table of existing passengers (Key: ID -> Value: Passenger*).
+ * Used to validate the `user_id` field.
+ * @param flightsTable A Hash Table of existing flights (Key: ID -> Value: Flight*).
+ * Used to validate the list of `flight_ids`.
+ * @param errorsFlag Pointer to an integer that will be set to 1 if any invalid or inconsistent lines are found.
+ *
+ * @return A new @c GHashTable where:
+ * - Key: Reservation ID (string).
+ * - Value: Pointer to @c Reservation structure.
+ * Returns @c NULL if the file cannot be opened.
  */
 GHashTable *readReservations(const char *filename, GHashTable *passengersTable,
                              GHashTable *flightsTable, int *errorsFlag);
 
 /**
- * @brief Retrieves a read-only reference to a reservation.
+ * @brief Retrieves a read-only reference to a reservation from the repository.
  *
- * **PERFORMANCE CRITICAL:** Returns a direct pointer to the internal data.
- * Zero copies, zero allocations.
+ * **PERFORMANCE CRITICAL:** This function returns a direct pointer to the
+ * data stored in the hash table. It involves NO memory allocation and NO copying.
+ * Complexity: O(1).
  *
- * @warning The returned pointer is owned by the dataset. DO NOT free or modify.
+ * @warning The returned pointer is owned by the Dataset. The caller **MUST NOT**
+ * free it, modify it, or store it beyond the lifespan of the dataset.
  *
- * @param id The reservation ID.
- * @param reservationsTable The hash table containing reservations.
- * @return A const pointer to the Reservation, or NULL if not found.
+ * @param id The unique Reservation ID to retrieve (e.g., "Book001").
+ * @param reservationsTable The hash table containing the reservation dataset.
+ * @return A @c const pointer to the Reservation structure, or @c NULL if not found.
  */
 const Reservation *getReservation(const gchar *id, const GHashTable *reservationsTable);
 
 /**
- * @brief Gets the Reservation ID.
+ * @brief Accessor for the Reservation ID.
  *
  * @param r Pointer to the constant Reservation structure.
- * @return Constant string of the ID.
+ * @return A constant string representing the ID.
+ * Returns @c NULL if @p r is NULL.
  */
 const gchar *getReservationId(const Reservation *r);
 
 /**
- * @brief Gets the list of Flight IDs in the reservation.
+ * @brief Accessor for the list of Flight IDs associated with the reservation.
  *
  * @param r Pointer to the constant Reservation structure.
- * @return A NULL-terminated array of strings. The array belongs to the struct.
+ * @return A @c NULL-terminated array of strings (@c gchar**).
+ * Each string is a Flight ID. The array is owned by the struct and must not be freed.
+ * Returns @c NULL if @p r is NULL.
  */
 gchar **getReservationFlightIds(const Reservation *r);
 
 /**
- * @brief Gets the document number of the passenger.
+ * @brief Accessor for the Passenger/User Document Number.
  *
  * @param r Pointer to the constant Reservation structure.
- * @return Document number as integer.
+ * @return The document number as an integer.
+ * Returns 0 if @p r is NULL.
  */
 int getReservationDocumentNo(const Reservation *r);
 
 /**
- * @brief Gets the price of the reservation.
+ * @brief Accessor for the Total Price of the reservation.
  *
  * @param r Pointer to the constant Reservation structure.
- * @return Price as float.
+ * @return The price as a float (including tax).
+ * Returns 0.0 if @p r is NULL.
  */
 gfloat getReservationPrice(const Reservation *r);
 
-// Unused getters kept commented out for memory optimization
+// Unused getters kept commented out for memory optimization to reduce struct size.
 // const gchar *getReservationSeat(const Reservation *r);
 // const gchar *getReservationExtraLuggage(const Reservation *r);
 // const gchar *getReservationPriorityBoarding(const Reservation *r);
 // const gchar *getReservationQrCode(const Reservation *r);
-
-/**
- * @brief Builds airport passenger statistics from reservations and flights.
- *
- * Iterates through all reservations and calculates arrivals/departures per airport.
- *
- * @param reservations Hash table of reservations.
- * @param flights Hash table of flights.
- * @return A hash table mapping airport codes to AirportPassengerStats structures.
- */
-GHashTable *buildAirportPassengerStats(GHashTable *reservations,
-                                       GHashTable *flights);
-
-/**
- * @brief Gets the total number of arrivals for an airport from statistics.
- */
-long getAirportArrivals(const AirportPassengerStats *s);
-
-/**
- * @brief Gets the total number of departures for an airport from statistics.
- */
-long getAirportDepartures(const AirportPassengerStats *s);
 
 #endif // !RESERVATIONS_H

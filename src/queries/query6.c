@@ -1,13 +1,15 @@
 #include "queries/query6.h"
-
+#include <core/dataset.h>
+#include <entities/reservations.h>
+#include <entities/passengers.h>
+#include <entities/flights.h>
 #include <ctype.h>
 #include <string.h>
 #include <stdio.h>
 
-// --------------------- Structs for Query 6 ---------------------
 typedef struct
 {
-    GHashTable *airportCounts; // airport -> number of passengers of that nationality
+    GHashTable *airportCounts;
 } NationalityData;
 
 static void freeNationalityData(gpointer data)
@@ -15,33 +17,23 @@ static void freeNationalityData(gpointer data)
     NationalityData *nd = data;
     if (!nd)
         return;
-
     g_hash_table_destroy(nd->airportCounts);
     g_free(nd);
 }
 
-// --------------------- Prepare data for Query 6 ---------------------
-GHashTable *prepareNationalityData(const GHashTable *passengers,
-                                   const GHashTable *reservations,
-                                   const GHashTable *flights)
+GHashTable *prepareNationalityData(const Dataset *ds)
 {
-    // nationality -> NationalityData
     GHashTable *natTable = g_hash_table_new_full(
         g_str_hash, g_str_equal, g_free, freeNationalityData);
 
-    GHashTableIter iter;
-    gpointer key, value;
-    g_hash_table_iter_init(&iter, (GHashTable *)reservations);
+    DatasetIterator *it = dataset_reservation_iterator_new(ds);
+    const Reservation *r;
 
-    while (g_hash_table_iter_next(&iter, &key, &value))
+    while ((r = (const Reservation *)dataset_iterator_next(it)) != NULL)
     {
-        const Reservation *r = value;
-        if (!r)
-            continue;
-
         int doc = getReservationDocumentNo(r);
 
-        const Passenger *p = g_hash_table_lookup((GHashTable *)passengers, GINT_TO_POINTER(doc));
+        const Passenger *p = dataset_get_passenger(ds, doc);
         if (!p)
             continue;
 
@@ -49,7 +41,6 @@ GHashTable *prepareNationalityData(const GHashTable *passengers,
         if (!nat)
             continue;
 
-        // Get or create NationalityData
         NationalityData *nd = g_hash_table_lookup(natTable, nat);
         if (!nd)
         {
@@ -64,7 +55,7 @@ GHashTable *prepareNationalityData(const GHashTable *passengers,
 
         for (int i = 0; flightIds[i]; i++)
         {
-            const Flight *f = g_hash_table_lookup((GHashTable *)flights, flightIds[i]);
+            const Flight *f = dataset_get_flight(ds, flightIds[i]);
             if (!f)
                 continue;
 
@@ -75,30 +66,25 @@ GHashTable *prepareNationalityData(const GHashTable *passengers,
             if (!dest)
                 continue;
 
-            // Incrementa contagem do aeroporto
             gpointer countPtr = g_hash_table_lookup(nd->airportCounts, dest);
             int count = countPtr ? GPOINTER_TO_INT(countPtr) : 0;
             g_hash_table_replace(nd->airportCounts, g_strdup(dest), GINT_TO_POINTER(count + 1));
         }
     }
+    dataset_iterator_free(it);
 
     return natTable;
 }
 
-// --------------------- Query 6 using precomputed data ---------------------
 int query_Q6(GHashTable *natTable, const char *nationality, FILE *output, int isSpecial)
 {
     char sep = isSpecial ? '=' : ';';
-
     NationalityData *nd = g_hash_table_lookup(natTable, nationality);
     if (!nd)
-    {
         return 0;
-    }
 
     char *bestAirport = NULL;
     int bestCount = 0;
-
     GHashTableIter iter;
     gpointer key, value;
     g_hash_table_iter_init(&iter, nd->airportCounts);
@@ -106,21 +92,16 @@ int query_Q6(GHashTable *natTable, const char *nationality, FILE *output, int is
     {
         char *airport = key;
         int count = GPOINTER_TO_INT(value);
-
         if (count > bestCount || (count == bestCount && (!bestAirport || strcmp(airport, bestAirport) < 0)))
         {
             bestAirport = airport;
             bestCount = count;
         }
     }
-
     if (bestAirport)
     {
         fprintf(output, "%s%c%d\n", bestAirport, sep, bestCount);
         return 1;
     }
-    else
-    {
-        return 0;
-    }
+    return 0;
 }

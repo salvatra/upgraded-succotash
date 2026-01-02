@@ -14,6 +14,8 @@
 #include "core/dataset.h"
 #include "core/utils.h"
 #include "core/time_utils.h"
+#include "core/indexer.h"
+#include "core/fenwick.h"
 #include "validation.h"
 #include "queries/queries.h"
 #include "queries/query4.h"
@@ -42,8 +44,7 @@ int interactive_mode(Dataset **ds_ref, char **dataset_path_ptr)
                             &q4_data, &airlineDelays, &natTable);
         if (!q4_data)
         {
-            q4_data = init_Q4_structure((GHashTable *)getDatasetReservations(*ds_ref),
-                                        (GHashTable *)getDatasetFlights(*ds_ref));
+            q4_data = init_Q4_structure(*ds_ref);
         }
     }
 
@@ -199,7 +200,7 @@ int interactive_mode(Dataset **ds_ref, char **dataset_path_ptr)
                             {
                                 CLEAR;
                                 printf(ANSI_BOLD "Query 4 Result:\n" ANSI_RESET);
-                                query4(q4_data, (GHashTable *)getDatasetPassengers(*ds_ref),
+                                query4(q4_data, *ds_ref,
                                        strlen(input) > 0 ? input : NULL, strlen(arg2) > 0 ? arg2 : NULL, stdout, special);
                                 free(readline(ANSI_DIM "\nPress ENTER to return..." ANSI_RESET));
                             }
@@ -291,7 +292,7 @@ int interactive_mode(Dataset **ds_ref, char **dataset_path_ptr)
 
                         build_query_context(*ds_ref, &aircraftsArray, &flightCounts, &airportFtrees, &q4_data, &airlineDelays, &natTable);
                         if (!q4_data)
-                            q4_data = init_Q4_structure((GHashTable *)getDatasetReservations(*ds_ref), (GHashTable *)getDatasetFlights(*ds_ref));
+                            q4_data = init_Q4_structure(*ds_ref);
 
                         if (errors != 0)
                             printf(ANSI_COLOR_RED "Dataset loaded with errors.\n" ANSI_RESET);

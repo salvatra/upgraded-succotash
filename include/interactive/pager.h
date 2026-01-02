@@ -1,28 +1,40 @@
+/**
+ * @file pager.h
+ * @brief Terminal paging utility for viewing dataset files.
+ *
+ * This module provides functionality to display large CSV files directly in the
+ * terminal using the system's pager (specifically `less`). It handles path
+ * resolution and basic on-the-fly formatting (converting CSV delimiters to
+ * tabs) to improve readability without modifying the source files.
+ */
+
 #ifndef PAGER_H
 #define PAGER_H
 
 /**
- * @file pager.h
- * @brief Provides file viewing capabilities using the system pager.
- */
-
-/**
- * @brief Displays a dataset file using the 'less' command line pager.
+ * @brief Displays a specific dataset file using the system pager ('less').
  *
- * This function constructs the path to the requested CSV file, opens it,
- * and streams its content to a pipe connected to `less`. It performs
- * on-the-fly formatting (replacing semicolons with tabs) to improve
- * readability in the terminal.
+ * This function constructs the full path to the requested CSV file based on the
+ * selected option. It then creates a pipe to the `less` command, reads the source
+ * file line by line, replaces semicolons (';') with tabs/spacing for alignment,
+ * and feeds the formatted output to the pager.
  *
- * @param base_dataset_path The directory path where the dataset is located.
- * @param option The index of the file to view:
- * 1 - aircrafts.csv
- * 2 - airports.csv
- * 3 - flights.csv
- * 4 - passengers.csv
- * 5 - reservations.csv
- * @return 0 on success, 1 on invalid option, 2 on file access error.
+ * This allows the user to scroll through large files (like flights.csv) comfortably
+ * within the interactive shell.
+ *
+ * @param base_dataset_path The root directory path of the currently loaded dataset.
+ * @param option The numeric identifier of the file to view:
+ * - 1: aircrafts.csv
+ * - 2: airports.csv
+ * - 3: flights.csv
+ * - 4: passengers.csv
+ * - 5: reservations.csv
+ *
+ * @return
+ * - 0 on success.
+ * - 1 if the provided @p option is invalid (out of range 1-5).
+ * - 2 if the file could not be opened (e.g., path incorrect or permissions denied).
  */
 int page_dataset(char *base_dataset_path, int option);
 
-#endif
+#endif // PAGER_H

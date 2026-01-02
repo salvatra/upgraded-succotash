@@ -11,6 +11,7 @@
 #include <entities/flights.h>
 #include <entities/passengers.h>
 #include <entities/reservations.h>
+#include <core/statistics.h>
 
 struct dataset
 {
@@ -25,6 +26,10 @@ struct dataset
   GPtrArray *nationalities;
 };
 
+struct dataset_iter
+{
+  GHashTableIter iter;
+};
 
 Dataset *initDataset()
 {
@@ -34,12 +39,80 @@ Dataset *initDataset()
   ds->airports = NULL;
   ds->aircrafts = NULL;
   ds->reservations = NULL;
+  ds->airportStats = NULL;
   ds->airportCodes = NULL;
   ds->aircraftManufacturers = NULL;
   ds->nationalities = NULL;
   return ds;
 }
 
+// --- Counters ---
+int dataset_get_flight_count(const Dataset *ds)
+{
+  return ds && ds->flights ? g_hash_table_size(ds->flights) : 0;
+}
+int dataset_get_aircraft_count(const Dataset *ds)
+{
+  return ds && ds->aircrafts ? g_hash_table_size(ds->aircrafts) : 0;
+}
+int dataset_get_passenger_count(const Dataset *ds)
+{
+  return ds && ds->passengers ? g_hash_table_size(ds->passengers) : 0;
+}
+int dataset_get_reservation_count(const Dataset *ds)
+{
+  return ds && ds->reservations ? g_hash_table_size(ds->reservations) : 0;
+}
+
+// --- Iterators ---
+static DatasetIterator *iterator_new_from_table(GHashTable *table)
+{
+  if (!table)
+    return NULL;
+  DatasetIterator *it = g_new0(DatasetIterator, 1);
+  g_hash_table_iter_init(&it->iter, table);
+  return it;
+}
+
+DatasetIterator *dataset_flight_iterator_new(const Dataset *ds)
+{
+  return iterator_new_from_table(ds->flights);
+}
+
+DatasetIterator *dataset_aircraft_iterator_new(const Dataset *ds)
+{
+  return iterator_new_from_table(ds->aircrafts);
+}
+
+DatasetIterator *dataset_reservation_iterator_new(const Dataset *ds)
+{
+  return iterator_new_from_table(ds->reservations);
+}
+
+DatasetIterator *dataset_passenger_iterator_new(const Dataset *ds)
+{
+  return iterator_new_from_table(ds->passengers);
+}
+
+const void *dataset_iterator_next(DatasetIterator *it)
+{
+  if (!it)
+    return NULL;
+  gpointer key, value;
+  if (g_hash_table_iter_next(&it->iter, &key, &value))
+  {
+    return (const void *)value;
+  }
+  return NULL;
+}
+
+void dataset_iterator_free(DatasetIterator *it)
+{
+  if (it)
+    g_free(it);
+}
+
+// --- Loading stuff ---
 void loadAllDatasets(Dataset *ds, gint *errorsFlag, const char *filePath,
                      gboolean enable_timing)
 {
@@ -132,8 +205,12 @@ void loadAllDatasets(Dataset *ds, gint *errorsFlag, const char *filePath,
     else
       printf("Failed to load reservations.csv (%.3f seconds)\n", elapsed);
   }
-  ds->airportStats = buildAirportPassengerStats(
-      ds->reservations, ds->flights);
+
+  ds->airportStats = calculate_airport_traffic(ds->reservations, ds->flights);
+  if (!ds->airportStats)
+  {
+    ds->airportStats = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, freeAirportPassengerStats);
+  }
 
   if (ds->airportCodes)
   {
@@ -147,6 +224,9 @@ void loadAllDatasets(Dataset *ds, gint *errorsFlag, const char *filePath,
 
 void cleanupDataset(Dataset *ds)
 {
+  if (!ds)
+    return;
+
   if (ds->flights)
     g_hash_table_destroy(ds->flights);
   if (ds->passengers)
@@ -168,25 +248,14 @@ void cleanupDataset(Dataset *ds)
   g_free(ds);
 }
 
-const GHashTable *getDatasetFlights(const Dataset *ds) { return ds->flights; }
+// --- Accessors ---
 
-const GHashTable *getDatasetPassengers(const Dataset *ds) { return ds->passengers; }
-
-const GHashTable *getDatasetAirports(const Dataset *ds) { return ds->airports; }
-
-const GHashTable *getDatasetAircrafts(const Dataset *ds) { return ds->aircrafts; }
-
-const GHashTable *getDatasetReservations(const Dataset *ds)
+const AirportPassengerStats *dataset_get_airport_stats(const Dataset *ds, const char *code)
 {
-  return ds->reservations;
+  if (!ds || !ds->airportStats || !code)
+    return NULL;
+  return (const AirportPassengerStats *)g_hash_table_lookup(ds->airportStats, code);
 }
-
-const GHashTable *getDatasetAiportStats(const Dataset *ds)
-{
-  return ds->airportStats;
-}
-
-// --------------------------------------------------
 
 const Flight *dataset_get_flight(const Dataset *ds, const char *id)
 {
@@ -223,14 +292,7 @@ const Reservation *dataset_get_reservation(const Dataset *ds, const char *id)
   return getReservation(id, ds->reservations);
 }
 
-// --------------------------------------------------
-
-
+// --- Other aux accessors ---
 GPtrArray *get_dataset_airport_codes(Dataset *ds) { return ds->airportCodes; }
-
-GPtrArray *get_dataset_aircraft_manufacturers(Dataset *ds)
-{
-  return ds->aircraftManufacturers;
-}
-
+GPtrArray *get_dataset_aircraft_manufacturers(Dataset *ds) { return ds->aircraftManufacturers; }
 GPtrArray *get_dataset_nationalities(Dataset *ds) { return ds->nationalities; }

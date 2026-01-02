@@ -23,7 +23,7 @@ static void specialize(int isSpecial, char *str)
 
 int query1wrapper(char *code, int isSpecial, FILE *stream, Dataset *ds)
 {
-    gchar *res = query1(code, getDatasetAirports(ds), getDatasetAiportStats(ds));
+    gchar *res = query1(code, ds);
 
     if (res)
     {
@@ -77,9 +77,7 @@ int query2wrapper(char *number, char *manufacturer, FILE *stream,
 int query3wrapper(char *arg1, char *arg2, FILE *stream, Dataset *ds,
                   int isSpecial, GHashTable *airportFtrees)
 {
-    GHashTable *airports = (GHashTable *)getDatasetAirports(ds);
-
-    gchar *result = query3(airportFtrees, airports, arg1, arg2);
+    gchar *result = query3(airportFtrees, ds, arg1, arg2);
 
     if (result)
     {

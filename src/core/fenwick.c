@@ -7,16 +7,11 @@
 #include <stdio.h>
 #include <time.h>
 
-//
-// AN IMPLEMENTATION OF FENWICK TREES / BIT FOR THIS USE CASE
-// https://cp-algorithms.com/data_structures/fenwick.html
-//
-
 struct ftree
 {
-  int n;         // number of distinct dates
-  time_t *dates; // ordered array of all departures
-  int *bit;      // array to implemet Fenwick Tree logic
+  int n;
+  time_t *dates;
+  int *bit;
 };
 
 void freeFTree(gpointer data)
@@ -30,54 +25,46 @@ void freeFTree(gpointer data)
   }
 }
 
-GHashTable *getFTrees(GHashTable *airportDepartures, GHashTable *flights)
+GHashTable *getFTrees(GHashTable *airportDepartures, const Dataset *ds)
 {
-  // 1. Create new hashtable to hold each airport's date information Fenwick
-  // Tree (FTree)
+
   GHashTable *airportTrees = g_hash_table_new_full(
       g_str_hash, g_str_equal, g_free, (GDestroyNotify)freeFTree);
 
-  // 2. Iterate over date info of each airport
+  // 1. Configure trees (based on indexer)
   GHashTableIter diter;
   gpointer dkey, dval;
   g_hash_table_iter_init(&diter, airportDepartures);
+
   while (g_hash_table_iter_next(&diter, &dkey, &dval))
   {
-    // FIXME: please, I don't want to deep copy a hash table to 'encapsulate'
-    // DatesInfo...
-
-    // 3. Get the aiport's code and information about its dates
     gchar *airportCode = (gchar *)dkey;
     DatesInfo *di = (DatesInfo *)dval;
 
     int nDates = getDiDates(di)->len;
 
-    // 4. Create and populate each airport's FTree
     FTree *tree = g_new0(FTree, 1);
     tree->n = nDates;
     tree->dates = g_new0(time_t, nDates);
+
     for (int i = 0; i < nDates; i++)
     {
       time_t dt = g_array_index(getDiDates(di), time_t, i);
       tree->dates[i] = dt;
     }
-    // Intialize the bit array with 0s
-    tree->bit = g_new0(int, nDates + 1); // index 1..n
-    for (int i = 1; i <= nDates; i++)
-    {
-      tree->bit[i] = 0;
-    }
+
+    // index 1..n
+    tree->bit = g_new0(int, nDates + 1);
 
     g_hash_table_insert(airportTrees, g_strdup(airportCode), tree);
   }
 
-  // 5. Iterate over all flights to populate the bit array
-  GHashTableIter fIter;
-  gpointer fkey;
-  g_hash_table_iter_init(&fIter, flights);
-  while (g_hash_table_iter_next(&fIter, &fkey, NULL))
+  // 2. Iterate through Flights using dataset iterator
+  DatasetIterator *it = dataset_flight_iterator_new(ds);
+  const Flight *flight;
+
+  while ((flight = (const Flight *)dataset_iterator_next(it)) != NULL)
   {
-    const Flight *flight = getFlight(fkey, flights);
 
     if (strcmp(getFlightStatus(flight), "Cancelled") == 0)
     {
@@ -103,7 +90,7 @@ GHashTable *getFTrees(GHashTable *airportDepartures, GHashTable *flights)
 
     time_t date_trunc = date - (date % 86400);
 
-    // binary search for the min index i such tree->dates[i] >= date
+    // Binary search
     int lower = 0, upper = tree->n - 1, idx = -1;
     while (lower <= upper)
     {
@@ -125,7 +112,6 @@ GHashTable *getFTrees(GHashTable *airportDepartures, GHashTable *flights)
         upper = mid - 1;
       }
     }
-    // standard fenwick tree bit population
     if (idx > 0)
     {
       int pos = idx;
@@ -136,6 +122,8 @@ GHashTable *getFTrees(GHashTable *airportDepartures, GHashTable *flights)
       }
     }
   }
+
+  dataset_iterator_free(it);
 
   return airportTrees;
 }

@@ -1,11 +1,13 @@
 /**
  * @file airports.h
- * @brief Airport entity definition and management.
+ * @brief Definition and management logic for Airport entities.
  *
- * This header defines the interface for the Airport entity. It strictly enforces
- * encapsulation by providing an opaque structure and read-only accessors.
- * Memory ownership is retained by the dataset/container, meaning users get
- * direct references to internal data but cannot modify or free it.
+ * This module handles the data encapsulation for Airport records (IATA Code, Location, Name)
+ * and provides functionality to parse them from CSV files into efficient in-memory structures.
+ *
+ * @note This header strictly enforces encapsulation by providing an opaque structure
+ * and read-only accessors. Memory ownership is retained by the dataset/container,
+ * preventing consumers from modifying or freeing internal data directly.
  */
 
 #ifndef AIRPORTS_H
@@ -14,111 +16,103 @@
 #include <glib.h>
 
 /**
- * @brief Opaque structure representing an airport.
+ * @brief Opaque structure representing an Airport entity.
  *
- * The internal layout of this structure is hidden from the public API.
- * Users interact with it solely through the provided accessor functions,
- * which ensure data integrity is maintained.
+ * Holds details such as the IATA Code, Name, City, Country, and Type.
+ * The internal memory layout is hidden to preserve ABI compatibility and data integrity.
  */
 typedef struct airport Airport;
 
 /**
- * @brief Frees the memory allocated for an Airport structure.
+ * @brief Memory cleanup function for an Airport structure.
  *
- * This function is designed to be used as a GDestroyNotify callback for
- * GHashTables or other GLib containers that hold Airport pointers.
- * It frees all internal strings and the structure itself.
+ * Designed to be used as a @c GDestroyNotify callback for GHashTables or other GLib containers.
+ * It performs a deep free, releasing all internal strings and the structure pointer itself.
  *
  * @param data A generic pointer to the Airport structure to be freed.
- * If data is NULL, the function does nothing.
+ * If @p data is NULL, the function does nothing.
  */
 void freeAirport(gpointer data);
 
 /**
- * @brief Reads airport data from a CSV file and populates a hash table.
+ * @brief Parses the Airports CSV file and populates a Hash Table.
  *
- * This function handles the parsing of the airports CSV file. It validates
- * each record (checking codes, coordinates, etc.) and stores valid airports
- * in a GHashTable. Invalid lines are logged to an error file.
+ * This function handles file I/O, CSV parsing, and data validation.
+ * - Ignores the header line.
+ * - Validates essential fields (e.g., Code must be present).
+ * - Logs invalid entries to the global error file.
+ * - Optionally collects valid airport codes into the provided @p codes array.
  *
- * @param filename The path to the CSV file containing airport data.
- * @param errorsFlag A pointer to an integer that will be updated to 1 if any
- * invalid lines are encountered during parsing.
- * @param codes A pointer to a GPtrArray. If provided (not NULL), this function
- * will add a copy of each valid airport code to this array.
- * This is typically used for validation or statistical purposes.
+ * @param filename The full path to the `airports.csv` file.
+ * @param errorsFlag Pointer to an integer that will be set to 1 if any invalid lines are encountered.
+ * @param codes Optional pointer to a @c GPtrArray. If provided (not NULL), the function
+ * adds a copy of each valid airport code to this array (useful for sorting/indexing).
  *
- * @return A GHashTable pointer where keys are airport codes (strings) and values
- * are pointers to Airport structures. Returns NULL if the file cannot
- * be opened or if a critical error occurs.
+ * @return A new @c GHashTable where:
+ * - Key: Airport Code (string).
+ * - Value: Pointer to @c Airport structure.
+ * Returns @c NULL if the file cannot be opened.
  */
 GHashTable *readAirports(const gchar *filename, gint *errorsFlag,
                          GPtrArray *codes);
 
 /**
- * @brief Retrieves a read-only reference to an airport from the hash table.
+ * @brief Retrieves a read-only reference to an airport from the repository.
  *
- * This function performs a lookup in the provided hash table using the airport code.
- * It returns a direct pointer to the stored Airport structure, granting fast
- * access without memory allocation overhead.
+ * Performs a fast O(1) lookup in the provided hash table using the airport code.
  *
- * @warning The returned pointer belongs to the dataset container. The caller
- * MUST NOT free it, modify it, or attempt to free its internal strings.
+ * @warning The returned pointer is owned by the Dataset container. The caller
+ * **MUST NOT** free it, modify it, or attempt to free its internal strings.
  *
- * @param code The IATA code of the airport to retrieve.
- * @param airportsTable The hash table containing the airport data.
+ * @param code The IATA code of the airport to retrieve (e.g., "LIS").
+ * @param airportsTable The hash table containing the airport dataset.
  *
- * @return A const pointer to the Airport structure if found; NULL otherwise.
+ * @return A @c const pointer to the Airport structure if found; @c NULL otherwise.
  */
 const Airport *getAirport(const gchar *code, const GHashTable *airportsTable);
 
 /**
- * @brief Gets the IATA code of an airport.
+ * @brief Accessor for the Airport IATA Code.
  *
  * @param airport A pointer to the constant Airport structure.
- * @return A constant string representing the airport code (e.g., "OPO").
- * The string is owned by the Airport structure and must not be freed.
- * Returns NULL if the input pointer is NULL.
+ * @return A constant string representing the airport code.
+ * Returns @c NULL if @p airport is NULL.
  */
 const gchar *getAirportCode(const Airport *airport);
 
 /**
- * @brief Gets the full name of an airport.
+ * @brief Accessor for the Airport Name.
  *
  * @param airport A pointer to the constant Airport structure.
- * @return A constant string representing the airport name.
- * The string is owned by the Airport structure and must not be freed.
- * Returns NULL if the input pointer is NULL.
+ * @return A constant string representing the full name of the airport.
+ * Returns @c NULL if @p airport is NULL.
  */
 const gchar *getAirportName(const Airport *airport);
 
 /**
- * @brief Gets the city where the airport is located.
+ * @brief Accessor for the City location.
  *
  * @param airport A pointer to the constant Airport structure.
  * @return A constant string representing the city name.
- * The string is owned by the Airport structure and must not be freed.
- * Returns NULL if the input pointer is NULL.
+ * Returns @c NULL if @p airport is NULL.
  */
 const gchar *getAirportCity(const Airport *airport);
 
 /**
- * @brief Gets the country where the airport is located.
+ * @brief Accessor for the Country location.
  *
  * @param airport A pointer to the constant Airport structure.
  * @return A constant string representing the country name.
- * The string is owned by the Airport structure and must not be freed.
- * Returns NULL if the input pointer is NULL.
+ * Returns @c NULL if @p airport is NULL.
  */
 const gchar *getAirportCountry(const Airport *airport);
 
 /**
- * @brief Gets the type of the airport.
+ * @brief Accessor for the Airport Type.
  *
  * @param airport A pointer to the constant Airport structure.
- * @return A constant string representing the airport type (e.g., "medium_airport").
- * The string is owned by the Airport structure and must not be freed.
- * Returns NULL if the input pointer is NULL.
+ * @return A constant string representing the type (e.g., "medium_airport", "large_airport").
+ * Returns @c NULL if @p airport is NULL.
  */
 const gchar *getAirportType(const Airport *airport);
 

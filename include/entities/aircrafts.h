@@ -1,11 +1,13 @@
 /**
  * @file aircrafts.h
- * @brief Aircraft entity definition and management.
+ * @brief Definition and management logic for Aircraft entities.
  *
- * This header defines the interface for the Aircraft entity. It strictly enforces
- * encapsulation by providing an opaque structure and read-only accessors.
- * Memory ownership is retained by the dataset/container, preventing users from
- * modifying or freeing internal data directly.
+ * This module handles the data encapsulation for Aircraft records (ID, Model, Manufacturer)
+ * and provides functionality to parse them from CSV files into efficient in-memory structures.
+ *
+ * @note This header strictly enforces encapsulation by providing an opaque structure
+ * and read-only accessors. Memory ownership is retained by the dataset, preventing
+ * consumers from modifying or freeing internal data directly.
  */
 
 #ifndef AIRCRAFTS_H
@@ -14,76 +16,82 @@
 #include <glib.h>
 
 /**
- * @brief Opaque structure representing an aircraft.
+ * @brief Opaque structure representing an Aircraft entity.
  *
- * The internal layout is hidden. Users interact with this structure solely
- * through the provided accessor functions, ensuring data integrity.
+ * Holds details such as the Aircraft ID (Tail Number), Model, and Manufacturer.
+ * The internal memory layout is hidden to preserve ABI compatibility and data integrity.
  */
 typedef struct aircraft Aircraft;
 
 /**
- * @brief Frees the memory allocated for an Aircraft structure.
+ * @brief Memory cleanup function for an Aircraft structure.
  *
- * Designed to be used as a GDestroyNotify callback for GHashTable.
- * It frees the internal strings (id, manufacturer, model) and the structure itself.
+ * Designed to be used as a @c GDestroyNotify callback for GHashTables.
+ * It performs a deep free, releasing the internal strings (id, manufacturer, model)
+ * and the structure pointer itself.
  *
  * @param data A generic pointer to the Aircraft structure to be freed.
  */
 void freeAircraft(gpointer data);
 
 /**
- * @brief Reads aircraft data from a CSV file and populates a hash table.
+ * @brief Parses the Aircrafts CSV file and populates a Hash Table.
  *
- * Parses the aircraft CSV file, validates each record, and stores valid
- * aircraft in a GHashTable. Invalid lines are logged to an error file.
+ * This function handles file I/O, CSV parsing, and data validation.
+ * - It ignores the header line.
+ * - It validates the syntax of each field (e.g., non-empty strings).
+ * - It logs invalid entries to the global error file (if applicable).
+ * - It collects unique manufacturer names into the optional @p manufacturers array.
  *
- * @param filename The path to the CSV file containing aircraft data.
- * @param errorsFlag A pointer to an integer updated to 1 if invalid lines are found.
- * @param manufacturers An optional pointer to a GPtrArray. If provided, the function
- * adds unique manufacturer names to this list during parsing.
+ * @param filename The full path to the `aircrafts.csv` file.
+ * @param errorsFlag Pointer to an integer that will be set to 1 if any invalid lines are encountered.
+ * @param manufacturers Optional pointer to a @c GPtrArray. If provided (not NULL),
+ * the function appends unique manufacturer names encountered during parsing.
  *
- * @return A GHashTable where keys are aircraft IDs (strings) and values are
- * pointers to Aircraft structures. Returns NULL on failure.
+ * @return A new @c GHashTable where:
+ * - Key: Aircraft ID (string).
+ * - Value: Pointer to @c Aircraft structure.
+ * Returns @c NULL if the file cannot be opened.
  */
 GHashTable *readAircrafts(const gchar *filename, gint *errorsFlag,
                           GPtrArray *manufacturers);
 
 /**
- * @brief Retrieves a read-only reference to an aircraft from the hash table.
+ * @brief Retrieves a read-only reference to an aircraft from the repository.
  *
- * Performs a fast O(1) lookup. Returns a direct pointer to the stored data.
+ * Performs a fast O(1) lookup in the hash table.
  *
- * @warning The returned pointer is owned by the dataset. The caller MUST NOT
- * free it or modify it.
+ * @warning The returned pointer is owned by the Dataset. The caller **MUST NOT** * free it or modify its contents.
  *
- * @param id The ID of the aircraft to retrieve (e.g., "A380-800").
- * @param aircraftsTable The hash table containing aircraft data.
- * @return A const pointer to the Aircraft structure, or NULL if not found.
+ * @param id The unique ID of the aircraft to retrieve (e.g., "A380-800").
+ * @param aircraftsTable The hash table containing the aircraft dataset.
+ * @return A @c const pointer to the Aircraft entity, or @c NULL if the ID is not found.
  */
 const Aircraft *getAircraft(const gchar *id, const GHashTable *aircraftsTable);
 
 /**
- * @brief Gets the unique ID of an aircraft.
+ * @brief Accessor for the Aircraft ID.
  *
  * @param aircraft A pointer to the constant Aircraft structure.
- * @return A constant string representing the ID. Owned by the Aircraft structure.
+ * @return A constant string representing the ID. Returns @c NULL if @p aircraft is NULL.
  */
 const gchar *getAircraftId(const Aircraft *aircraft);
 
 /**
- * @brief Gets the manufacturer of an aircraft.
+ * @brief Accessor for the Aircraft Manufacturer.
  *
  * @param aircraft A pointer to the constant Aircraft structure.
- * @return A constant string representing the manufacturer (e.g., "Boeing").
- * Owned by the Aircraft structure.
+ * @return A constant string representing the manufacturer (e.g., "Boeing", "Airbus").
+ * Returns @c NULL if @p aircraft is NULL.
  */
 const gchar *getAircraftManufacturer(const Aircraft *aircraft);
 
 /**
- * @brief Gets the model of an aircraft.
+ * @brief Accessor for the Aircraft Model.
  *
  * @param aircraft A pointer to the constant Aircraft structure.
- * @return A constant string representing the model. Owned by the Aircraft structure.
+ * @return A constant string representing the model (e.g., "747-400").
+ * Returns @c NULL if @p aircraft is NULL.
  */
 const gchar *getAircraftModel(const Aircraft *aircraft);
 

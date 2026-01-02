@@ -1,33 +1,59 @@
+/**
+ * @file queries.h
+ * @brief Query execution orchestration and context management.
+ *
+ * This module serves as the engine room for the application's query processing.
+ * It has two primary responsibilities:
+ * 1. **Context Construction:** Pre-calculating auxiliary data structures (indexes, trees, sorted arrays)
+ * needed to answer complex queries efficiently (O(1) or O(log N)).
+ * 2. **Batch Execution:** Parsing a command file and dispatching execution to specific query logic.
+ *
+ * @note This module handles the "Business Logic" flow but does not manage the User Interface.
+ */
+
 #ifndef QUERIES_H
 #define QUERIES_H
+
 #include <core/dataset.h>
 #include <queries/query4.h>
 #include <stdio.h>
 
 /**
- * @file queries.h
- * @brief Orchestration of query execution and context management.
- * * This module handles the "heavy lifting" of preparing data structures
- * for query execution (Context) and running the batch mode (runAllQueries).
- * It does NOT handle interactive output or user input parsing.
- */
-
-/**
- * @brief Callback function type for performance statistics.
- * Used by runAllQueries to report execution time per query.
+ * @brief Callback function signature for query performance monitoring.
+ *
+ * This function pointer type allows `runAllQueries` to report execution metrics
+ * back to the caller without coupling the query logic to a specific output format.
+ *
+ * @param queryNum The ID of the query executed (e.g., 1 for Query 1).
+ * @param lineNum The line number in the input file where this query command was found.
+ * @param elapsed The execution time in seconds.
+ * @param ctx User-provided context pointer (passed through from runAllQueries).
  */
 typedef void (*QueryStatsCallback)(int queryNum, int lineNum, double elapsed, void *ctx);
+
 /**
- * @brief Builds the context data structures required for executing queries.
+ * @brief Pre-calculates and allocates all auxiliary structures required for Query optimization.
  *
- * @param ds Dataset pointer.
- * @param aircraftsArray Pointer to return the array of aircrafts.
- * @param flightCounts Pointer to return the array of flight counts.
- * @param airportFtrees Pointer to return the Fenwick trees hash table.
- * @param q4_data Pointer to return the Query 4 data structure.
- * @param airlineDelays Pointer to return the airline delays list.
- * @param natTable Pointer to return the nationality data hash table.
- * @return 0 on success, 1 on failure.
+ * This function analyzes the loaded Dataset and constructs specialized indexes
+ * to ensure specific queries meet performance requirements:
+ * - **Query 2:** Builds sorted arrays of aircrafts and flight counts.
+ * - **Query 3:** Constructs Fenwick Trees for temporal range queries.
+ * - **Query 4:** Initializes the Q4Struct optimization.
+ * - **Query 5:** Pre-sorts airline delay statistics.
+ * - **Query 6:** Indexes passenger nationalities.
+ *
+ * @note The function allocates memory for these structures. The caller (usually `interactive_mode` or `main`)
+ * becomes responsible for freeing them when they are no longer needed.
+ *
+ * @param ds The source Dataset.
+ * @param aircraftsArray [Output] Handle to the sorted array of aircrafts.
+ * @param flightCounts [Output] Handle to the array of flight counts per aircraft.
+ * @param airportFtrees [Output] Handle to the Hash Table of Fenwick Trees (for Q3).
+ * @param q4_data [Output] Handle to the specialized structure for Q4 optimization.
+ * @param airlineDelays [Output] Handle to the sorted list of airline delays (for Q5).
+ * @param natTable [Output] Handle to the Hash Table of nationality stats (for Q6).
+ *
+ * @return 0 on success, non-zero on failure.
  */
 int build_query_context(Dataset *ds, GPtrArray **aircraftsArray,
                         int **flightCounts, GHashTable **airportFtrees,
@@ -35,29 +61,22 @@ int build_query_context(Dataset *ds, GPtrArray **aircraftsArray,
                         GList **airlineDelays, GHashTable **natTable);
 
 /**
- * @brief Callback function type for reporting query execution statistics.
+ * @brief Executes a batch of queries defined in a text file.
  *
- * @param queryNum The identifier of the query type (e.g., 1 for Query 1).
- * @param lineNum The line number in the input file triggering this query.
- * @param elapsed The time taken to execute the query in seconds.
- * @param ctx User-provided context pointer.
- */
-typedef void (*QueryStatsCallback)(int queryNum, int lineNum, double elapsed,
-                                   void *ctx);
-
-/**
- * @brief Executes a batch of queries from an input file.
+ * This function opens the specified `filePath`, parses it line-by-line,
+ * identifies the requested query ID (1-10), and dispatches the execution
+ * to the appropriate logic handler.
  *
- * Reads query commands from the specified file and executes them against the
- * dataset.
+ * It manages the creation of separate output files for each query command
+ * (e.g., `command1_output.txt`).
  *
- * @param ds A pointer to the Dataset containing loaded data.
- * @param filePath The path to the input file containing query commands.
- * @param callback An optional callback function to receive execution statistics
- * (can be NULL).
- * @param ctx An optional context pointer passed to the callback (can be NULL).
+ * @param ds The Dataset containing the loaded data.
+ * @param filePath The full path to the input file containing the query commands.
+ * @param callback An optional function pointer to receive execution statistics (useful for benchmarking).
+ * Can be NULL if no stats are required.
+ * @param ctx An optional generic pointer passed to the callback (user context). Can be NULL.
  */
 void runAllQueries(Dataset *ds, const char *filePath,
                    QueryStatsCallback callback, void *ctx);
 
-#endif
+#endif // QUERIES_H

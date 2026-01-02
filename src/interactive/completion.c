@@ -25,7 +25,7 @@ void update_completion_context(Dataset *ds)
     active_nationalities = get_dataset_nationalities(ds);
 }
 
-// --- Generator Functions  ---
+// --- Generators  ---
 
 char *main_command_gen(const char *str, int state)
 {
@@ -218,7 +218,7 @@ char *shell_cmd_generator(const char *text, int state)
     return NULL;
 }
 
-// --- Completion Hooks (public) ---
+// --- Completion hooks (public) ---
 
 char **main_completion(const char *str, int start, int end)
 {

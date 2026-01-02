@@ -2,22 +2,20 @@
 #include <core/fenwick.h>
 #include <core/time_utils.h>
 #include <entities/airports.h>
-#include <entities/flights.h>
+#include <core/indexer.h>
 #include <glib.h>
-#include <queries/query1.h>
 #include <queries/query3.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <validation.h>
 
-// Used only because it only needs name, city and country (airport)
-gchar *query3Aux(const gchar *code, const GHashTable *airportsTable)
+gchar *query3Aux(const gchar *code, const Dataset *ds)
 {
-  if (!code || !airportsTable)
+  if (!code || !ds)
     return NULL;
 
-  const Airport *airport = getAirport(code, airportsTable);
+  const Airport *airport = dataset_get_airport(ds, code);
   if (!airport)
     return NULL;
 
@@ -29,11 +27,10 @@ gchar *query3Aux(const gchar *code, const GHashTable *airportsTable)
   city = city ? city : "";
   country = country ? country : "";
 
-  gchar *result = g_strconcat(code, ";", name, ";", city, ";", country, NULL);
-  return result;
+  return g_strconcat(code, ";", name, ";", city, ";", country, NULL);
 }
 
-gchar *query3(GHashTable *airportFtrees, GHashTable *airports,
+gchar *query3(GHashTable *airportFtrees, const Dataset *ds,
               const char *startStr, const char *endStr)
 {
   time_t start_date = parse_unix_date(startStr, NULL);
@@ -52,7 +49,6 @@ gchar *query3(GHashTable *airportFtrees, GHashTable *airports,
     int n = getFtreeN(tree);
     time_t *dates = getFtreeDates(tree);
 
-    // Binary search for start index (1-based)
     int lower = 0, upper = n - 1, start = n + 1;
     while (lower <= upper)
     {
@@ -68,7 +64,6 @@ gchar *query3(GHashTable *airportFtrees, GHashTable *airports,
       }
     }
 
-    // Binary search for end index
     lower = 0;
     upper = n - 1;
     int end = 0;
@@ -100,9 +95,9 @@ gchar *query3(GHashTable *airportFtrees, GHashTable *airports,
   if (bestCount == 0 || !bestAirport)
     return NULL;
 
-  gchar *airportName = query3Aux(bestAirport, airports);
+  gchar *airportName = query3Aux(bestAirport, ds);
   gchar *result = g_strdup_printf("%s;%d", airportName, bestCount);
   g_free(airportName);
 
-  return result; // caller must g_free()
+  return result;
 }

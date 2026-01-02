@@ -1,70 +1,90 @@
 /**
  * @file fenwick.h
- * @brief Implementation of Fenwick Trees (Bit Indexed Array) for date range
- * queries
+ * @brief Implementation of Fenwick Trees (Binary Indexed Trees) for efficient temporal queries.
+ *
+ * This module provides a data structure optimized for calculating prefix sums and range sums
+ * over time-series data. It is specifically used to answer queries regarding flight counts
+ * within variable date ranges (Query 3) with O(log N) complexity.
  */
 
 #ifndef FENWICK_H
 #define FENWICK_H
 
+#include <core/dataset.h>
 #include <glib.h>
 #include <time.h>
 
 /**
- * @brief Opaque structure representing a Fenwick Tree or Binary Indexed Tree.
+ * @brief Opaque structure representing a Fenwick Tree (or Binary Indexed Tree).
  *
- * This is a specilized structure intended to optimize queries based on date
- * range searches.
+ * The FTree allows for efficient calculation of cumulative frequencies.
+ * internally, it maps specific dates (coordinate compression) to indices in a BIT array.
+ * * Structure Layout (Internal):
+ * - Dates Array: Sorted list of distinct operating days.
+ * - BIT Array: Stores the cumulative frequencies.
+ * - N: Number of distinct days.
  */
 typedef struct ftree FTree;
 
 /**
- * @brief Builds a GHashTable of Fenwick Trees for each aiport's date
- * information
+ * @brief Builds a registry of Fenwick Trees for all airports in the dataset.
  *
- * Creates a Fenwick Tree (FTree) structure to hold flight date information for
- * each airport and stores them all in a GHashTable strcuture. This allows range
- * based date queries to execute in a significantly reduced time.
+ * This function iterates through the dataset to constructs a specialized FTree
+ * for every airport that has flight departures.
  *
- * @param airportDepartures GHashTable containing information on airports'
- * departures.
- * @param flights Flights hash table.
- * @return A GHashTable mapping airport codes to FTree structures.
+ * The construction process involves:
+ * 1. Identifying distinct flight dates for each airport (Pre-processing).
+ * 2. initializing the FTree structure with the correct size.
+ * 3. Populating the tree by iterating through the dataset's flights and updating frequencies.
+ *
+ * @param airportDepartures Helper Hash Table containing pre-calculated distinct dates per airport.
+ * @param ds The main Dataset containing all flight information.
+ * @return A new GHashTable mapping Airport Codes (char*) -> FTree structures (FTree*).
  */
-GHashTable *getFTrees(GHashTable *airportDepartures, GHashTable *flights);
+GHashTable *getFTrees(GHashTable *airportDepartures, const Dataset *ds);
 
 /**
- * @brief Calculates the prefix sum up to a given index in the Fenwick Tree.
+ * @brief Calculates the prefix sum up to a given index.
+ *
+ * Computes the total number of events (flights) from the first date up to the date
+ * corresponding to @p idx.
+ *
+ * @note Time Complexity: O(log N)
  *
  * @param t Pointer to the FTree structure.
- * @param idx The index up to which the sum is calculated.
- * @return The prefix sum.
+ * @param idx The 1-based index in the BIT array up to which the sum is calculated.
+ * @return The cumulative sum.
  */
 int ftree_prefix_sum(FTree *t, int idx);
 
 /**
- * @brief Calculates the sum within a range [left_idx, right_idx].
+ * @brief Calculates the sum of events within a specific range [left_idx, right_idx].
+ *
+ * Utilizes the property: Sum([L, R]) = PrefixSum(R) - PrefixSum(L-1).
+ *
+ * @note Time Complexity: O(log N)
  *
  * @param t Pointer to the FTree structure.
- * @param left_idx The starting index of the range.
- * @param right_idx The ending index of the range.
- * @return The sum of values within the range.
+ * @param left_idx The starting index of the range (inclusive).
+ * @param right_idx The ending index of the range (inclusive).
+ * @return The total count of flights within the range.
  */
 int ftree_range_sum(FTree *t, int left_idx, int right_idx);
 
 /**
- * @brief Casts a generic pointer to an FTree pointer.
+ * @brief Helper utility to cast a generic pointer to an FTree pointer.
  *
- * This essentially allows access to each FTree residing in the hash table of
- * FTrees by iterating over it.
+ * Useful when iterating over GHashTables or GLists where values are stored as `gpointer`.
  *
- * @param data Generic pointer.
- * @return FTree pointer.
+ * @param data Generic pointer (gpointer).
+ * @return Casted FTree pointer.
  */
 FTree *getFTree(gpointer data);
 
 /**
- * @brief Gets the size (N) of the Fenwick Tree.
+ * @brief Retrieves the size (N) of the Fenwick Tree.
+ *
+ * Corresponds to the number of distinct dates monitored by this tree.
  *
  * @param tree Pointer to the FTree structure.
  * @return The size of the tree.
@@ -72,19 +92,25 @@ FTree *getFTree(gpointer data);
 int getFtreeN(FTree *tree);
 
 /**
- * @brief Gets the array of dates associated with the Fenwick Tree.
+ * @brief Accesses the internal array of dates associated with the tree.
+ *
+ * This array maps the 0-based index of the date to the actual `time_t` value.
+ * It is used to perform Binary Search to find the correct indices for range queries.
  *
  * @param tree Pointer to the FTree structure.
- * @return Pointer to an array of time_t values.
+ * @return Pointer to the array of time_t values.
  */
 time_t *getFtreeDates(FTree *tree);
 
 /**
- * @brief Gets the internal BIT array of the Fenwick Tree.
+ * @brief Accesses the internal BIT (Binary Indexed Tree) integer array.
+ *
+ * @warning This exposes internal implementation details and should be used with caution,
+ * primarily for debugging or serialization purposes.
  *
  * @param tree Pointer to the FTree structure.
- * @return Pointer to the integer array.
+ * @return Pointer to the raw integer array.
  */
 int *getFTreeBit(FTree *tree);
 
-#endif
+#endif // FENWICK_H

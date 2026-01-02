@@ -11,7 +11,6 @@ struct datesinfo
     GHashTable *dateSet;
 };
 
-// Helper destructor internal to this module
 static void freeDatesInfo(gpointer data)
 {
     DatesInfo *di = (DatesInfo *)data;
@@ -27,23 +26,14 @@ static void freeDatesInfo(gpointer data)
 
 GHashTable *create_date_index(const Dataset *ds)
 {
-    // We still access the raw table for iteration (for now)
-    const GHashTable *flights = getDatasetFlights(ds);
-
     GHashTable *airportsDepartures = g_hash_table_new_full(
         g_str_hash, g_str_equal, g_free, (GDestroyNotify)freeDatesInfo);
 
-    GHashTableIter iter;
-    gpointer key;
-    // Cast const away just for initialization of the iterator, strictly safe here
-    g_hash_table_iter_init(&iter, (GHashTable *)flights);
+    DatasetIterator *it = dataset_flight_iterator_new(ds);
+    const Flight *flight;
 
-    while (g_hash_table_iter_next(&iter, &key, NULL))
+    while ((flight = (const Flight *)dataset_iterator_next(it)) != NULL)
     {
-        // Zero-Copy access
-        const Flight *flight = getFlight(key, flights);
-        if (!flight)
-            continue;
 
         const char *status = getFlightStatus(flight);
         if (status && strcmp(status, "Cancelled") == 0)
@@ -77,7 +67,8 @@ GHashTable *create_date_index(const Dataset *ds)
         }
     }
 
-    // Sort all arrays
+    dataset_iterator_free(it);
+
     GHashTableIter datesIter;
     gpointer datesKey, datesVal;
     g_hash_table_iter_init(&datesIter, airportsDepartures);
