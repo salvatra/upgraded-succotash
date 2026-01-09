@@ -1,4 +1,5 @@
 #include <queries/query4.h>
+#include <queries/query_module.h>
 #include <core/time_utils.h>
 #include <entities/access/reservations_access.h>
 #include <entities/access/flights_access.h>
@@ -242,4 +243,31 @@ void query4(Q4Struct *q4_data, const Dataset *ds,
     {
         fprintf(output, "\n");
     }
+}
+
+static void *q4_init_wrapper(Dataset *ds)
+{
+    return (void *)init_Q4_structure(ds);
+}
+
+static void q4_run_wrapper(void *ctx, Dataset *ds, char *arg1, char *arg2, int isSpecial, FILE *output)
+{
+    Q4Struct *data = (Q4Struct *)ctx;
+
+    query4(data, ds, arg1, arg2, output, isSpecial);
+}
+
+static void q4_destroy_wrapper(void *ctx)
+{
+    destroy_Q4_structure((Q4Struct *)ctx);
+}
+
+QueryModule get_query4_module(void)
+{
+    QueryModule mod = {
+        .id = 4,
+        .init = q4_init_wrapper,
+        .run = q4_run_wrapper,
+        .destroy = q4_destroy_wrapper};
+    return mod;
 }

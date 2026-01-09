@@ -5,6 +5,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <glib.h>
+#include <ctype.h>
 #include "interactive/shell.h"
 #include "interactive/ui.h"
 #include "interactive/session.h"
@@ -14,40 +15,27 @@
 #include "core/dataset.h"
 #include "core/utils.h"
 #include "core/time_utils.h"
-#include "core/indexer.h"
-#include "core/fenwick.h"
 #include "io/validation/validation_utils.h"
-#include "io/validation/airports_validator.h"
-#include "queries/queries.h"
-#include "queries/query4.h"
-#include "queries/query5.h"
 #include "io/manager.h"
-
+#include "queries/queries.h"
 #define CLEAR clear_screen()
+
+extern QueryManager *query_manager_create(Dataset *ds);
+extern void query_manager_destroy(QueryManager *qm);
+extern int query_manager_execute(QueryManager *qm, int queryId, char *arg1, char *arg2,
+                                 int isSpecial, FILE *output, Dataset *ds);
 
 int interactive_mode(Dataset **ds_ref, char **dataset_path_ptr)
 {
     char *input;
 
     update_completion_context(*ds_ref);
-
     read_history(".apphistory");
 
-    GHashTable *airportFtrees = NULL;
-    GPtrArray *aircraftsArray = NULL;
-    int *flightCounts = NULL;
-    GList *airlineDelays = NULL;
-    GHashTable *natTable = NULL;
-    Q4Struct *q4_data = NULL;
-
+    QueryManager *qm = NULL;
     if (*ds_ref)
     {
-        build_query_context(*ds_ref, &aircraftsArray, &flightCounts, &airportFtrees,
-                            &q4_data, &airlineDelays, &natTable);
-        if (!q4_data)
-        {
-            q4_data = init_Q4_structure(*ds_ref);
-        }
+        qm = query_manager_create(*ds_ref);
     }
 
     // ===== MAIN LOOP =====
@@ -90,155 +78,110 @@ int interactive_mode(Dataset **ds_ref, char **dataset_path_ptr)
                 input = readline(ANSI_BOLD "Select query > " ANSI_RESET);
                 rl_attempted_completion_function = main_completion;
 
-                if (input)
+                if (input && *input)
                 {
                     trim_whitespace(input);
-                    // 'S'pecial :P
-                    int special = (strlen(input) > 1 && *(input + 1) == 'S') ? 1 : 0;
+                    int special = (strlen(input) > 1 && toupper(*(input + 1)) == 'S') ? 1 : 0;
+                    int queryNum = input[0] - '0';
+
+                    char *arg1 = NULL;
+                    char *arg2 = NULL;
+                    int valid = 1;
 
                     // QUERY 1
-                    if (input[0] == '1')
+                    if (queryNum == 1)
                     {
                         free(input);
                         rl_attempted_completion_function = airport_code_completion;
                         input = readline("Airport code:\t");
                         trim_whitespace(input);
-                        if (!checkAirportCode(input))
-                        {
-                            printf(ANSI_BLINK ANSI_COLOR_RED "Invalid code syntax!\n" ANSI_RESET);
-                            free(readline("Press ENTER..."));
-                        }
-                        else
-                        {
-                            CLEAR;
-                            printf(ANSI_BOLD "Query 1 Result (%s):\n" ANSI_RESET, input);
-                            if (query1wrapper(input, special, stdout, *ds_ref) == 1)
-                                printf(ANSI_BLINK ANSI_COLOR_RED "Code not found.\n" ANSI_RESET);
-                            free(readline(ANSI_DIM "\nPress ENTER to return..." ANSI_RESET));
-                        }
-                        rl_attempted_completion_function = main_completion;
+                        arg1 = strdup(input);
                     }
                     // QUERY 2
-                    else if (input[0] == '2')
+                    else if (queryNum == 2)
                     {
                         free(input);
                         rl_attempted_completion_function = NULL;
                         char *num = readline("Top N flights: ");
                         trim_whitespace(num);
-                        if (!checkInt(num))
-                        {
-                            printf("Invalid integer!\n");
-                            free(num);
-                        }
-                        else
-                        {
-                            rl_attempted_completion_function = aircraft_manufs_completion;
-                            input = readline("Manufacturer [OPTIONAL]: ");
-                            trim_whitespace(input);
-                            int r = query2wrapper(num, input, stdout, aircraftsArray, flightCounts, special);
-                            free(num);
-                            if (r == 1)
-                                printf(ANSI_COLOR_RED "Cannot view top 0!\n" ANSI_RESET);
-                            else if (r == 2)
-                                printf(ANSI_COLOR_RED "Manufacturer not found.\n" ANSI_RESET);
-                            free(readline(ANSI_DIM "\nPress ENTER to return..." ANSI_RESET));
-                            rl_attempted_completion_function = main_completion;
-                        }
+                        arg1 = strdup(num);
+                        free(num);
+
+                        rl_attempted_completion_function = aircraft_manufs_completion;
+                        input = readline("Manufacturer [OPTIONAL]: ");
+                        trim_whitespace(input);
+                        if (strlen(input) > 0)
+                            arg2 = strdup(input);
                     }
                     // QUERY 3
-                    else if (input[0] == '3')
+                    else if (queryNum == 3)
                     {
                         free(input);
                         input = readline("Start date (YYYY-MM-DD): ");
                         trim_whitespace(input);
-                        if (!checkDate(parse_unix_date(input, NULL)) || !strcmp(input, "\n"))
-                        {
-                            printf(ANSI_COLOR_RED "Invalid start date!\n" ANSI_RESET);
-                            free(readline("Press ENTER..."));
-                        }
-                        else
-                        {
-                            char *arg2 = readline("End date (YYYY-MM-DD):   ");
-                            trim_whitespace(arg2);
-                            if (!checkDate(parse_unix_date(arg2, NULL)) || !strcmp(arg2, "\n"))
-                            {
-                                printf(ANSI_COLOR_RED "Invalid end date!\n" ANSI_RESET);
-                                free(arg2);
-                                free(readline("Press ENTER..."));
-                            }
-                            else
-                            {
-                                CLEAR;
-                                printf(ANSI_BOLD "Query 3 Result:\n" ANSI_RESET);
-                                if (query3wrapper(input, arg2, stdout, *ds_ref, special, airportFtrees) == 1)
-                                    printf(ANSI_COLOR_RED "No data found.\n" ANSI_RESET);
-                                free(arg2);
-                                free(readline(ANSI_DIM "\nPress ENTER to return..." ANSI_RESET));
-                            }
-                        }
+                        arg1 = strdup(input);
+
+                        char *d2 = readline("End date (YYYY-MM-DD):   ");
+                        trim_whitespace(d2);
+                        arg2 = strdup(d2);
+                        free(d2);
                     }
                     // QUERY 4
-                    else if (input[0] == '4')
+                    else if (queryNum == 4)
                     {
                         free(input);
                         input = readline("Start date [ENTER for all]: ");
                         trim_whitespace(input);
-                        int valid = (strlen(input) == 0 || checkDate(parse_unix_date(input, NULL)));
-                        if (!valid)
-                        {
-                            printf(ANSI_COLOR_RED "Invalid start date!\n" ANSI_RESET);
-                            free(readline("Press ENTER..."));
-                        }
-                        else
-                        {
-                            char *arg2 = readline("End date [ENTER for all]:   ");
-                            trim_whitespace(arg2);
-                            if (strlen(arg2) > 0 && !checkDate(parse_unix_date(arg2, NULL)))
-                            {
-                                printf(ANSI_COLOR_RED "Invalid end date!\n" ANSI_RESET);
-                                free(readline("Press ENTER..."));
-                            }
-                            else
-                            {
-                                CLEAR;
-                                printf(ANSI_BOLD "Query 4 Result:\n" ANSI_RESET);
-                                query4(q4_data, *ds_ref,
-                                       strlen(input) > 0 ? input : NULL, strlen(arg2) > 0 ? arg2 : NULL, stdout, special);
-                                free(readline(ANSI_DIM "\nPress ENTER to return..." ANSI_RESET));
-                            }
-                            free(arg2);
-                        }
+                        arg1 = strdup(input);
+
+                        char *d2 = readline("End date [ENTER for all]:   ");
+                        trim_whitespace(d2);
+                        arg2 = strdup(d2);
+                        free(d2);
                     }
                     // QUERY 5
-                    else if (input[0] == '5')
+                    else if (queryNum == 5)
                     {
                         free(input);
                         input = readline("Top N: ");
                         trim_whitespace(input);
-                        if (!checkInt(input))
-                        {
-                            printf(ANSI_COLOR_RED "Invalid integer!\n" ANSI_RESET);
-                            free(readline("Press ENTER..."));
-                        }
-                        else
-                        {
-                            if (query5wrapper(input, stdout, airlineDelays, special) != 3)
-                                printf(ANSI_COLOR_RED "Error or invalid input.\n" ANSI_RESET);
-                            free(readline(ANSI_DIM "\nPress ENTER to return..." ANSI_RESET));
-                        }
+                        arg1 = strdup(input);
                     }
                     // QUERY 6
-                    else if (input[0] == '6')
+                    else if (queryNum == 6)
                     {
                         free(input);
                         rl_attempted_completion_function = nationality_completion;
                         input = readline("Nationality: ");
                         trim_whitespace(input);
-                        if (query6wrapper(input, stdout, natTable, special) != 0)
-                            printf(ANSI_COLOR_RED "Error or no data found.\n" ANSI_RESET);
-                        free(readline(ANSI_DIM "\nPress ENTER to return..." ANSI_RESET));
-                        rl_attempted_completion_function = main_completion;
+                        arg1 = strdup(input);
                     }
+                    else
+                    {
+                        valid = 0;
+                    }
+
+                    rl_attempted_completion_function = main_completion;
+
+                    if (valid && qm)
+                    {
+                        CLEAR;
+                        printf(ANSI_BOLD "Query %d Result:\n" ANSI_RESET, queryNum);
+
+                        query_manager_execute(qm, queryNum, arg1, arg2, special, stdout, *ds_ref);
+
+                        free(readline(ANSI_DIM "\nPress ENTER to return..." ANSI_RESET));
+                    }
+                    else if (!qm)
+                    {
+                        printf(ANSI_COLOR_RED "Dataset not loaded!\n" ANSI_RESET);
+                        free(readline(ANSI_DIM "\nPress ENTER to return..." ANSI_RESET));
+                    }
+
+                    if (arg1)
+                        free(arg1);
+                    if (arg2)
+                        free(arg2);
                 }
             }
             // --- VIEW ---
@@ -273,28 +216,18 @@ int interactive_mode(Dataset **ds_ref, char **dataset_path_ptr)
                     if (validate_dataset_files(input))
                     {
                         printf("Reloading dataset...\n");
+
+                        if (qm)
+                            query_manager_destroy(qm);
+                        qm = NULL;
+
                         cleanupDataset(*ds_ref);
-                        // aux cleanup
-                        if (airportFtrees)
-                            g_hash_table_destroy(airportFtrees);
-                        if (aircraftsArray)
-                            g_ptr_array_free(aircraftsArray, TRUE);
-                        if (flightCounts)
-                            free(flightCounts);
-                        if (airlineDelays)
-                            freeAirlineDelays(airlineDelays);
-                        if (natTable)
-                            g_hash_table_destroy(natTable);
-                        if (q4_data)
-                            destroy_Q4_structure(q4_data);
 
                         *ds_ref = initDataset();
                         gint errors = 0;
                         loadAllDatasets(*ds_ref, &errors, input, FALSE);
 
-                        build_query_context(*ds_ref, &aircraftsArray, &flightCounts, &airportFtrees, &q4_data, &airlineDelays, &natTable);
-                        if (!q4_data)
-                            q4_data = init_Q4_structure(*ds_ref);
+                        qm = query_manager_create(*ds_ref);
 
                         if (errors != 0)
                             printf(ANSI_COLOR_RED "Dataset loaded with errors.\n" ANSI_RESET);
@@ -316,23 +249,14 @@ int interactive_mode(Dataset **ds_ref, char **dataset_path_ptr)
                 break;
             }
         }
-        free(input);
+        if (input)
+            free(input);
     }
 
     // Cleanup
     write_history(".apphistory");
-    if (airportFtrees)
-        g_hash_table_destroy(airportFtrees);
-    if (aircraftsArray)
-        g_ptr_array_free(aircraftsArray, TRUE);
-    if (flightCounts)
-        free(flightCounts);
-    if (airlineDelays)
-        freeAirlineDelays(airlineDelays);
-    if (natTable)
-        g_hash_table_destroy(natTable);
-    if (q4_data)
-        destroy_Q4_structure(q4_data);
+    if (qm)
+        query_manager_destroy(qm);
 
     return 0;
 }

@@ -1,68 +1,56 @@
 /**
  * @file query5.h
- * @brief Logic for Query 5: Airline Punctuality Ranking (Average Delay).
+ * @brief Logic for Query 5: Airline Delays Statistics.
  *
- * This module is responsible for ranking airlines based on their weighted flight delays.
+ * This module identifies the top N airlines with the highest average flight delays.
  *
- * **Optimization Strategy:**
- * Calculating the average delay for every airline requires iterating over the entire
- * flights dataset. To avoid this cost during runtime execution, this module uses a
- * **Pre-Aggregation** approach. The statistics are calculated and sorted during the
- * dataset loading phase, making the actual query execution extremely fast (O(N)).
+ * @section q5_algo Algorithm Overview
+ * 1. **Pre-Calculation (Init):** The module iterates over all flights to compute the
+ * accumulated delay for each airline. It filters only "Delayed" flights.
+ * 2. **Metric:** The metric used is the average delay (Total Delay / Count), rounded to
+ * 3 decimal places.
+ * 3. **Query Phase (Run):** The pre-calculated list is sorted by this average delay
+ * (descending) to find the top N airlines.
  */
 
 #ifndef QUERY5_H
 #define QUERY5_H
 
+#include <core/dataset.h>
 #include <glib.h>
 #include <stdio.h>
-#include "entities/access/flights_access.h"
+#include "queries/query_module.h"
+
+// --- Legacy API (Preserved) ---
 
 /**
- * @brief Pre-calculates and sorts airline delay statistics.
+ * @brief Computes aggregated delay statistics for all airlines.
  *
- * This function serves as the **Context Builder** for Query 5.
- * It iterates through the entire array of flights to:
- * 1. Group flights by Airline.
- * 2. Accumulate the total delay time (Scheduled Departure vs Actual Departure).
- * 3. Count the total flights per airline.
- * 4. Calculate the average delay.
- * 5. **Sort** the resulting list of airlines in descending order of average delay.
- *
- * @note This function is computationally expensive (O(F), where F is total flights)
- * and should only be called once during the application startup.
- *
- * @param flightsArray The master array containing all loaded flights.
- * @return A sorted @c GList* containing internal structures with airline statistics.
- * The caller is responsible for managing this list's lifecycle using @ref freeAirlineDelays.
+ * @param flightsArray A GPtrArray containing Flight* pointers.
+ * @return A GList* of internal AirlineDelayPrepared structures.
  */
 GList *prepareAirlineDelays(GPtrArray *flightsArray);
 
 /**
- * @brief Executes Query 5: Retrieve Top N Airlines by Average Delay.
+ * @brief Executes Query 5.
+ * Sorts the delay list and prints the top N airlines.
  *
- * Since the @p airlineDelays list is already sorted by the builder function,
- * this function simply iterates the first N elements of the list and prints them.
- *
- * **Time Complexity:** O(N)
- *
- * @param airlineDelays The pre-sorted list of airline statistics (Context).
- * @param N The number of top airlines to display.
- * @param output The output stream to write results to.
- * @param isSpecial Formatting flag (Standard vs Custom/CSV).
- *
- * @return The number of lines actually printed (may be less than N if the list is smaller).
+ * @param airlineDelays The pre-calculated list of airline stats.
+ * @param N             The number of airlines to show.
+ * @param output        The output file stream.
+ * @param isSpecial     Flag for 'S' variant (separator formatting).
+ * @return The number of lines printed.
  */
 int query5(GList *airlineDelays, int N, FILE *output, int isSpecial);
 
 /**
- * @brief Frees the memory associated with the airline delays list.
- *
- * Iterates through the @c GList, freeing the custom airline statistic structures
- * stored in each node, and finally frees the list container itself.
- *
- * @param airlineDelays The list to be destroyed.
+ * @brief Frees the airline delay list and its contents.
  */
 void freeAirlineDelays(GList *airlineDelays);
+
+/**
+ * @brief Factory function to retrieve the Module definition for Query 5.
+ */
+QueryModule get_query5_module(void);
 
 #endif // QUERY5_H

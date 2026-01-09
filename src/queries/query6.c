@@ -1,4 +1,5 @@
 #include "queries/query6.h"
+#include "queries/query_module.h"
 #include <core/dataset.h>
 #include "entities/access/reservations_access.h"
 #include "entities/access/passengers_access.h"
@@ -23,16 +24,13 @@ static void freeNationalityData(gpointer data)
 
 GHashTable *prepareNationalityData(const Dataset *ds)
 {
-    GHashTable *natTable = g_hash_table_new_full(
-        g_str_hash, g_str_equal, g_free, freeNationalityData);
-
+    GHashTable *natTable = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, freeNationalityData);
     DatasetIterator *it = dataset_reservation_iterator_new(ds);
     const Reservation *r;
 
     while ((r = (const Reservation *)dataset_iterator_next(it)) != NULL)
     {
         int doc = getReservationDocumentNo(r);
-
         const Passenger *p = dataset_get_passenger(ds, doc);
         if (!p)
             continue;
@@ -52,16 +50,11 @@ GHashTable *prepareNationalityData(const Dataset *ds)
         gchar **flightIds = getReservationFlightIds(r);
         if (!flightIds)
             continue;
-
         for (int i = 0; flightIds[i]; i++)
         {
             const Flight *f = dataset_get_flight(ds, flightIds[i]);
-            if (!f)
+            if (!f || strcmp(getFlightStatus(f), "Cancelled") == 0)
                 continue;
-
-            if (strcmp(getFlightStatus(f), "Cancelled") == 0)
-                continue;
-
             const char *dest = getFlightDestination(f);
             if (!dest)
                 continue;
@@ -72,7 +65,6 @@ GHashTable *prepareNationalityData(const Dataset *ds)
         }
     }
     dataset_iterator_free(it);
-
     return natTable;
 }
 
@@ -90,7 +82,7 @@ int query_Q6(GHashTable *natTable, const char *nationality, FILE *output, int is
     g_hash_table_iter_init(&iter, nd->airportCounts);
     while (g_hash_table_iter_next(&iter, &key, &value))
     {
-        char *airport = key;
+        char *airport = (char *)key;
         int count = GPOINTER_TO_INT(value);
         if (count > bestCount || (count == bestCount && (!bestAirport || strcmp(airport, bestAirport) < 0)))
         {
@@ -104,4 +96,38 @@ int query_Q6(GHashTable *natTable, const char *nationality, FILE *output, int is
         return 1;
     }
     return 0;
+}
+
+static void *q6_init_wrapper(Dataset *ds)
+{
+    return (void *)prepareNationalityData(ds);
+}
+
+static void q6_run_wrapper(void *ctx, Dataset *ds, char *arg1, char *arg2, int isSpecial, FILE *output)
+{
+    (void)ds;
+    (void)arg2;
+    GHashTable *natTable = (GHashTable *)ctx;
+    if (!arg1 || !*arg1)
+    {
+        fprintf(output, "\n");
+        return;
+    }
+    if (query_Q6(natTable, arg1, output, isSpecial) == 0)
+    {
+        fprintf(output, "\n");
+    }
+}
+
+static void q6_destroy_wrapper(void *ctx)
+{
+    if (ctx)
+        g_hash_table_destroy((GHashTable *)ctx);
+}
+
+QueryModule get_query6_module(void)
+{
+    QueryModule mod = {
+        .id = 6, .init = q6_init_wrapper, .run = q6_run_wrapper, .destroy = q6_destroy_wrapper};
+    return mod;
 }

@@ -1,10 +1,19 @@
 /**
  * @file query3.h
- * @brief Logic for Query 3: Temporal Airport Traffic Analysis.
+ * @brief Logic for Query 3: Airport Delays Optimization.
  *
- * This module implements the logic to calculate flight statistics for all airports
- * within a specific date range. It leverages **Fenwick Trees (Binary Indexed Trees)**
- * to perform Range Sum Queries efficiently.
+ * This module allows for the efficient retrieval of the airport with the highest
+ * delay rating within a specific time range.
+ *
+ * @section q3_algo Algorithm Overview
+ * This query typically faces "Range Sum" problems which are slow (O(N)) if iterating
+ * over raw flights every time. To optimize this to O(log N):
+ *
+ * 1. **Pre-Calculation (Init):** We map every airport to a **Fenwick Tree (Binary Indexed Tree)**.
+ * The tree indexes time (dates), allowing us to calculate the cumulative delay rating
+ * between any two dates in logarithmic time.
+ * 2. **Query Phase (Run):** For a given date range [A, B], we query the Fenwick Tree
+ * of every airport to find the range sum. We compare these sums to find the maximum.
  */
 
 #ifndef QUERY3_H
@@ -12,38 +21,30 @@
 
 #include <glib.h>
 #include <core/dataset.h>
+#include "queries/query_module.h"
 
 /**
- * @brief Helper structure to hold an Airport Code and its aggregated flight count.
+ * @brief Core logic for Query 3.
  *
- * Used primarily for sorting the results (by Count DESC, then Code ASC)
- * before generating the final output string.
+ * Iterates through the pre-computed Fenwick Trees to find the airport with the
+ * highest delay rating in the specified date range.
+ *
+ * @param airportFtrees A Hash Table mapping Airport Code (string) -> Fenwick Tree (FTree*).
+ * This structure must be built during the module initialization.
+ * @param ds            The dataset (used to retrieve Airport names for the final output).
+ * @param startStr      The start date string (e.g., "2023/01/01").
+ * @param endStr        The end date string (e.g., "2023/01/31").
+ *
+ * @return A newly allocated string (`gchar*`) formatted as "AirportName;Rating".
+ * Returns NULL if no airport matches the criteria or if input is invalid.
  */
-typedef struct dateCount DateCount;
+gchar *query3(GHashTable *airportFtrees, const Dataset *ds,
+              const char *startStr, const char *endStr);
 
 /**
- * @brief Executes Query 3: Total Flights per Airport in a Date Range.
- *
- * This function calculates the total number of flights (movements) for each airport
- * between @p startStr and @p endStr (inclusive).
- *
- * **Algorithmic Strategy:**
- * Instead of iterating through millions of flights to check dates, it uses
- * pre-calculated Fenwick Trees stored in @p airportFtrees.
- * 1. Parses the start/end dates into internal indices.
- * 2. Performs a Range Sum Query on each airport's tree: $Sum(L, R) = PrefixSum(R) - PrefixSum(L-1)$.
- * 3. Time Complexity per Airport: $O(\log N)$, where N is the number of days.
- *
- * @param airportFtrees A Hash Table mapping Airport Codes (char*) to Fenwick Tree structures (FTree*).
- * Created via `build_query_context`.
- * @param ds The main Dataset (used for validating codes or accessing auxiliary data).
- * @param startStr The start date string in format "YYYY-MM-DD".
- * @param endStr The end date string in format "YYYY-MM-DD".
- *
- * @return A newly allocated string containing the formatted results (e.g., "OPO;150\nLIS;120\n").
- * @warning The caller is responsible for freeing this string using `g_free()`.
- * Returns NULL/Empty string if dates are invalid or no data is found.
+ * @brief Factory function to retrieve the Module definition for Query 3.
+ * Used by the Query Manager to register this query.
  */
-gchar *query3(GHashTable *airportFtrees, const Dataset *ds, const char *startStr, const char *endStr);
+QueryModule get_query3_module(void);
 
 #endif // QUERY3_H

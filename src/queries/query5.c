@@ -1,4 +1,6 @@
 #include "queries/query5.h"
+#include "queries/query_module.h"
+#include "core/dataset.h"
 #include "entities/access/flights_access.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -110,4 +112,59 @@ void freeAirlineDelays(GList *airlineDelays)
         g_free(entry);
     }
     g_list_free(airlineDelays);
+}
+
+static void *q5_init_wrapper(Dataset *ds)
+{
+    if (!ds)
+        return NULL;
+
+    GPtrArray *flights = g_ptr_array_new();
+    DatasetIterator *it = dataset_flight_iterator_new(ds);
+    const Flight *f;
+    while ((f = dataset_iterator_next(it)) != NULL)
+    {
+        g_ptr_array_add(flights, (gpointer)f);
+    }
+    dataset_iterator_free(it);
+
+    GList *delays_list = prepareAirlineDelays(flights);
+
+    g_ptr_array_free(flights, TRUE);
+
+    return (void *)delays_list;
+}
+
+static void q5_run_wrapper(void *ctx, Dataset *ds, char *arg1, char *arg2, int isSpecial, FILE *output)
+{
+    GList *delays_list = (GList *)ctx;
+    (void)ds;
+    (void)arg2;
+
+    if (!arg1 || !*arg1)
+    {
+        fprintf(output, "\n");
+        return;
+    }
+
+    int N = atoi(arg1);
+    if (query5(delays_list, N, output, isSpecial) == 0)
+    {
+        fprintf(output, "\n");
+    }
+}
+
+static void q5_destroy_wrapper(void *ctx)
+{
+    freeAirlineDelays((GList *)ctx);
+}
+
+QueryModule get_query5_module(void)
+{
+    QueryModule mod = {
+        .id = 5,
+        .init = q5_init_wrapper,
+        .run = q5_run_wrapper,
+        .destroy = q5_destroy_wrapper};
+    return mod;
 }

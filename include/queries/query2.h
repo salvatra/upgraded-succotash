@@ -1,105 +1,85 @@
 /**
  * @file query2.h
- * @brief Logic for Query 2: Global Flight Ranking by Aircraft.
+ * @brief Logic for Query 2: Aircraft Flight Statistics.
  *
- * This module implements the logic to identify and rank aircraft based on their
- * total flight volume. It supports filtering by manufacturer and utilizes
- * pre-computed indices to deliver high-performance results (sorting logic).
+ * This module implements the logic to identify the top N aircraft with the highest
+ * number of flights. It supports optional filtering by aircraft model.
+ *
+ * @section q2_algo Algorithm Overview
+ * Unlike simple lookups, this query requires a global ranking of aircraft based on
+ * flight frequency. To answer this efficiently (O(N log N) or better per query):
+ * 1. **Pre-Calculation Phase (Init):** We iterate the entire dataset once to count
+ * flights per aircraft, storing the results in a direct-mapped array (`flightCounts`).
+ * 2. **Query Phase (Run):** We filter the aircraft list (if a model argument is provided),
+ * create a temporary list of candidates, sort them by flight count, and return the top N.
  */
 
 #ifndef QUERY2_H
 #define QUERY2_H
 
-#include <entities/access/aircrafts_access.h>
-#include <entities/access/flights_access.h>
 #include <glib.h>
+#include <core/dataset.h>
+#include "queries/query_module.h"
+
+// Forward declaration of the opaque stats structure used in the results
+typedef struct aircraft_stats AircraftStats;
 
 /**
- * @brief Opaque structure holding aggregated statistics for a specific Aircraft.
- *
- * Encapsulates the pairing of an Aircraft entity with its calculated flight count.
- * Used as the return element for the query result list.
- * Internal layout is hidden from the public API.
+ * @brief Retrieves the Aircraft ID from a stats object.
+ * @param stats The stats object.
+ * @return The unique Aircraft ID string.
  */
-typedef struct aircraftstats AircraftStats;
+char *get_aircraftstats_id(AircraftStats *stats);
 
 /**
- * @brief Executes Query 2: Retrieve Top N Aircraft by Flight Count.
- *
- * This function ranks aircrafts descendingly by the number of flights they have performed.
- * It allows for optional filtering by manufacturer.
- *
- * @note **Optimization:** If @p precomputedCounts is provided, the function skips the
- * expensive iteration over the Flights table and uses the cached counters, significantly
- * reducing execution time.
- *
- * @param N The maximum number of results to return (The "N" in "Top N").
- * @param aircrafts A pointer array (`GPtrArray*`) containing all available Aircraft entities.
- * @param manufacturerFilter An optional string to filter results.
- * If provided (not NULL), only aircrafts from this manufacturer are considered.
- * If NULL, all aircrafts are considered.
- * @param outSize [Output] Pointer to an integer where the actual number of elements
- * returned in the array will be stored (may be less than N).
- * @param precomputedCounts (Optional) An array of integers representing flight counts,
- * indexed strictly to match the order of the @p aircrafts array.
- *
- * @return A dynamically allocated array of pointers to @c AircraftStats structures,
- * sorted by flight count (descending).
- * @warning The caller owns this array and is responsible for freeing it using
- * @ref free_aircraftstats_array.
+ * @brief Retrieves the Manufacturer from a stats object.
+ * @param stats The stats object.
+ * @return The manufacturer name.
  */
-AircraftStats **query2(int N, GPtrArray *aircrafts,
-                       const char *manufacturerFilter, int *outSize,
-                       int *precomputedCounts);
+char *get_aircraftstats_manufacturer(AircraftStats *stats);
 
 /**
- * @brief Frees the array of results returned by Query 2.
- *
- * Iterates through the array, freeing each @c AircraftStats element, and finally
- * frees the array pointer itself.
- *
- * @param array The array of pointers to @c AircraftStats.
- * @param size The number of elements in the array (value of @p outSize from query2).
+ * @brief Retrieves the Model from a stats object.
+ * @param stats The stats object.
+ * @return The model name.
+ */
+char *get_aircraftstats_model(AircraftStats *stats);
+
+/**
+ * @brief Retrieves the flight count from a stats object.
+ * @param stats The stats object.
+ * @return The total number of valid flights.
+ */
+int get_aircraftstats_count(AircraftStats *stats);
+
+/**
+ * @brief Frees an array of AircraftStats objects.
+ * @param array The array of pointers to AircraftStats.
+ * @param size The number of elements in the array.
  */
 void free_aircraftstats_array(AircraftStats **array, int size);
 
 /**
- * @brief Frees a single AircraftStats structure.
+ * @brief Core logic for Query 2.
  *
- * @param a Pointer to the AircraftStats structure to be freed.
+ * Identifies the top N aircraft with the most flights.
+ *
+ * @param N            The number of top results to return.
+ * @param aircrafts    A list of all valid Aircraft entities (pre-sorted or indexed).
+ * @param filter_model Optional string to filter by Model (can be NULL).
+ * @param size         [Output] Stores the number of results returned.
+ * @param flightCounts An array of integers where index `i` corresponds to the flight
+ * count of the aircraft at `aircrafts[i]`.
+ *
+ * @return An allocated array of `AircraftStats*` pointers. Returns NULL if no results found.
  */
-void free_aircraftstats(AircraftStats *a);
+AircraftStats **query2(int N, GPtrArray *aircrafts, const char *filter_model,
+                       int *size, int *flightCounts);
 
 /**
- * @brief Accessor for the calculated Flight Count.
- *
- * @param a Pointer to the AircraftStats structure.
- * @return The total number of flights performed by this aircraft.
+ * @brief Factory function to retrieve the Module definition for Query 2.
+ * Used by the Query Manager to register this query.
  */
-int get_aircraftstats_count(const AircraftStats *a);
-
-/**
- * @brief Accessor for the Aircraft ID (Registration).
- *
- * @param a Pointer to the AircraftStats structure.
- * @return A constant string representing the aircraft ID.
- */
-const gchar *get_aircraftstats_id(const AircraftStats *a);
-
-/**
- * @brief Accessor for the Aircraft Model.
- *
- * @param a Pointer to the AircraftStats structure.
- * @return A constant string representing the model name.
- */
-const gchar *get_aircraftstats_model(const AircraftStats *a);
-
-/**
- * @brief Accessor for the Aircraft Manufacturer.
- *
- * @param a Pointer to the AircraftStats structure.
- * @return A constant string representing the manufacturer name.
- */
-const gchar *get_aircraftstats_manufacturer(const AircraftStats *a);
+QueryModule get_query2_module(void);
 
 #endif // QUERY2_H

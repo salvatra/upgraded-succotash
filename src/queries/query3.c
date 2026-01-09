@@ -1,15 +1,16 @@
+#include <queries/query3.h>
+#include <queries/query_module.h>
 #include <core/dataset.h>
 #include <core/fenwick.h>
+#include <core/indexer.h>
 #include <core/time_utils.h>
 #include <entities/access/airports_access.h>
-#include <core/indexer.h>
 #include <glib.h>
-#include <queries/query3.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 
-gchar *query3Aux(const gchar *code, const Dataset *ds)
+static gchar *query3Aux(const gchar *code, const Dataset *ds)
 {
   if (!code || !ds)
     return NULL;
@@ -32,6 +33,9 @@ gchar *query3Aux(const gchar *code, const Dataset *ds)
 gchar *query3(GHashTable *airportFtrees, const Dataset *ds,
               const char *startStr, const char *endStr)
 {
+  if (!airportFtrees || !startStr || !endStr)
+    return NULL;
+
   time_t start_date = parse_unix_date(startStr, NULL);
   time_t end_date = parse_unix_date(endStr, NULL);
 
@@ -44,7 +48,7 @@ gchar *query3(GHashTable *airportFtrees, const Dataset *ds,
   while (g_hash_table_iter_next(&iter, &key, &val))
   {
     const gchar *code = (const gchar *)key;
-    FTree *tree = getFTree(val);
+    FTree *tree = (FTree *)val;
     int n = getFtreeN(tree);
     time_t *dates = getFtreeDates(tree);
 
@@ -99,4 +103,62 @@ gchar *query3(GHashTable *airportFtrees, const Dataset *ds,
   g_free(airportName);
 
   return result;
+}
+
+static void *q3_init_wrapper(Dataset *ds)
+{
+  if (!ds)
+    return NULL;
+
+  GHashTable *dates = create_date_index(ds);
+
+  GHashTable *ftrees = getFTrees(dates, ds);
+
+  g_hash_table_destroy(dates);
+
+  return ftrees;
+}
+
+static void q3_run_wrapper(void *ctx, Dataset *ds, char *arg1, char *arg2, int isSpecial, FILE *output)
+{
+  GHashTable *ftrees = (GHashTable *)ctx;
+
+  gchar *res = query3(ftrees, ds, arg1, arg2);
+
+  if (res)
+  {
+    if (isSpecial)
+    {
+      for (char *p = res; *p; p++)
+      {
+        if (*p == ';')
+          *p = '=';
+      }
+    }
+    fprintf(output, "%s\n", res);
+    g_free(res);
+  }
+  else
+  {
+    fprintf(output, "\n");
+  }
+}
+
+static void q3_destroy_wrapper(void *ctx)
+{
+  if (ctx)
+  {
+
+    g_hash_table_destroy((GHashTable *)ctx);
+  }
+}
+
+QueryModule get_query3_module(void)
+{
+  QueryModule mod = {
+      .id = 3,
+      .init = q3_init_wrapper,
+      .run = q3_run_wrapper,
+      .destroy = q3_destroy_wrapper};
+  return mod;
 }

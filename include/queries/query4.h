@@ -1,67 +1,46 @@
 /**
  * @file query4.h
- * @brief Logic for Query 4: "Who booked the most reservations?"
+ * @brief Logic for Query 4: Weekly Top Passenger Statistics.
  *
- * This header defines the interface for Query 4, which identifies the passenger
- * who made the highest number of reservations within a specific time interval.
- * To handle the large volume of data efficiently, this query utilizes a specific
- * pre-computation structure (`Q4Struct`).
+ * This query identifies the passenger who most frequently appears in the "Top 10 Spenders"
+ * list across all weeks in a given date range.
  */
 
 #ifndef QUERY4_H
 #define QUERY4_H
-
+#include <core/dataset.h>
 #include <glib.h>
 #include <stdio.h>
-#include <core/dataset.h>
+#include "queries/query_module.h"
 
 /**
  * @typedef Q4Struct
- * @brief Opaque structure for Query 4 optimization.
- *
- * This structure holds pre-aggregated reservation counts (e.g., grouped by week or
- * total counts) to allow for faster execution when filtering by date ranges.
- * The internal layout is defined in `src/queries/query4.c`.
+ * @brief Opaque handle for Query 4's internal index (Weekly Top 10s).
  */
 typedef struct q4_struct Q4Struct;
 
 /**
- * @brief Initializes the optimization structure for Query 4.
- *
- * Scans the entire dataset (reservations) and pre-calculates necessary statistics
- * (e.g., mapping reservation counts per passenger per week).
- * This allows the actual query execution to be significantly faster than iterating
- * through raw reservations every time.
- *
- * @param ds The central Dataset containing all loaded reservations.
- * @return A pointer to the allocated `Q4Struct`. Must be freed with `destroy_Q4_structure`.
+ * @brief Builds the index of Weekly Top 10 Spenders.
  */
-// Updated: Receives only the Dataset
 Q4Struct *init_Q4_structure(const Dataset *ds);
 
 /**
- * @brief Frees the memory associated with the Query 4 structure.
- * @param q4 The structure to destroy.
+ * @brief Frees the internal Q4 structure.
  */
-void destroy_Q4_structure(Q4Struct *q4);
+void destroy_Q4_structure(Q4Struct *data);
 
 /**
  * @brief Executes Query 4.
- *
- * Finds the passenger with the most reservations in the specified date range.
- * If multiple passengers have the same maximum count, the one with the
- * lexicographically smaller Document ID is chosen.
- *
- * @param q4_data The pre-computed optimization structure.
- * @param ds The central Dataset (used to retrieve Passenger details like Name/Nationality once the winner is found).
- * @param date_begin The start date string (YYYY/MM/DD) for the interval (inclusive). Can be NULL/Empty for "beginning of time".
- * @param date_end The end date string (YYYY/MM/DD) for the interval (inclusive). Can be NULL/Empty for "end of time".
- * @param output The file stream to write the result to.
- * @param isSpecial Formatting flag (0 for standard output with ';', 1 for special output with '=').
+ * Finds the most frequent "Top 10" passenger within the date range [date_begin, date_end].
  */
-// Updated: Receives Dataset instead of just the passengers hash table
 void query4(Q4Struct *q4_data, const Dataset *ds,
             const char *date_begin, const char *date_end,
             FILE *output, int isSpecial);
 
-#endif
+
+/**
+ * @brief Returns the module definition for the Query Manager.
+ */
+QueryModule get_query4_module(void);
+
+#endif // QUERY4_H
