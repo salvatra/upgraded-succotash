@@ -1,17 +1,10 @@
 #include "io/manager.h"
-
 #include <stdio.h>
 #include <glib.h>
-
-// Core utilities
 #include "core/time_utils.h"
 #include "core/utils.h"
 #include "core/statistics.h"
-
-// Internal Dataset definition
 #include "core/internal/dataset_internal.h"
-
-// Entity Access Headers
 #include "entities/access/aircrafts_access.h"
 #include "entities/access/airports_access.h"
 #include "entities/access/flights_access.h"
@@ -25,12 +18,10 @@ void loadAllDatasets(Dataset *ds, int *errorsFlag, const char *filePath, gboolea
     gboolean success;
     guint size;
 
-    // Initialize auxiliary arrays
     ds->airportCodes = g_ptr_array_new_with_free_func(g_free);
     ds->aircraftManufacturers = g_ptr_array_new_with_free_func(g_free);
     ds->nationalities = g_ptr_array_new_with_free_func(g_free);
 
-    // 1. Aircrafts
     if (enable_timing)
         timer = g_timer_new();
 
@@ -50,7 +41,6 @@ void loadAllDatasets(Dataset *ds, int *errorsFlag, const char *filePath, gboolea
             printf("Failed to load aircrafts.csv (%.3f seconds)\n", elapsed);
     }
 
-    // 2. Flights
     if (enable_timing)
         timer = g_timer_new();
 
@@ -70,7 +60,6 @@ void loadAllDatasets(Dataset *ds, int *errorsFlag, const char *filePath, gboolea
             printf("Failed to load flights.csv (%.3f seconds)\n", elapsed);
     }
 
-    // 3. Passengers
     if (enable_timing)
         timer = g_timer_new();
 
@@ -90,7 +79,6 @@ void loadAllDatasets(Dataset *ds, int *errorsFlag, const char *filePath, gboolea
             printf("Failed to load passengers.csv (%.3f seconds)\n", elapsed);
     }
 
-    // 4. Airports
     if (enable_timing)
         timer = g_timer_new();
 
@@ -110,7 +98,6 @@ void loadAllDatasets(Dataset *ds, int *errorsFlag, const char *filePath, gboolea
             printf("Failed to load airports.csv (%.3f seconds)\n", elapsed);
     }
 
-    // 5. Reservations
     if (enable_timing)
         timer = g_timer_new();
 
@@ -130,7 +117,6 @@ void loadAllDatasets(Dataset *ds, int *errorsFlag, const char *filePath, gboolea
             printf("Failed to load reservations.csv (%.3f seconds)\n", elapsed);
     }
 
-    // 6. Post-processing
     ds->airportStats = calculate_airport_traffic(ds->reservations, ds->flights);
     if (!ds->airportStats)
     {

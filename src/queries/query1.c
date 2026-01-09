@@ -1,7 +1,7 @@
 #include <queries/query1.h>
 #include <core/dataset.h>
 #include <core/statistics.h>
-#include "entities/access/airports_access.h" // Updated include
+#include "entities/access/airports_access.h"
 #include <string.h>
 #include <stdio.h>
 

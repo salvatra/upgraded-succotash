@@ -1,8 +1,9 @@
 #include <queries/query2.h>
-#include "entities/access/aircrafts_access.h" // Added required access header
+#include "entities/access/aircrafts_access.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <glib.h>
 
 struct aircraftstats
 {
@@ -92,7 +93,6 @@ AircraftStats **query2(int N, GPtrArray *aircrafts,
                        const char *manufacturerFilter, int *outSize,
                        int *precomputedCounts)
 {
-
   int numAircrafts = aircrafts->len;
   int resultCount = 0;
   AircraftStats **result = NULL;
@@ -106,7 +106,6 @@ AircraftStats **query2(int N, GPtrArray *aircrafts,
       continue;
 
     const Aircraft *ac = g_ptr_array_index(aircrafts, i);
-
     const char *manuf = getAircraftManufacturer(ac);
 
     if (manufacturerFilter && *manufacturerFilter &&
@@ -122,7 +121,8 @@ AircraftStats **query2(int N, GPtrArray *aircrafts,
   }
 
   resultCount = heapSize;
-  result = malloc(sizeof(AircraftStats *) * resultCount);
+
+  result = g_new(AircraftStats *, resultCount);
 
   for (int i = resultCount - 1; i >= 0; i--)
   {
@@ -133,10 +133,10 @@ AircraftStats **query2(int N, GPtrArray *aircrafts,
 
     const Aircraft *ac = node->aircraft;
 
-    AircraftStats *as = malloc(sizeof(AircraftStats));
-    as->id = strdup(node->id);
-    as->manufacturer = strdup(getAircraftManufacturer(ac));
-    as->model = strdup(getAircraftModel(ac));
+    AircraftStats *as = g_new(AircraftStats, 1);
+    as->id = g_strdup(node->id);
+    as->manufacturer = g_strdup(getAircraftManufacturer(ac));
+    as->model = g_strdup(getAircraftModel(ac));
     as->count = node->count;
 
     result[i] = as;

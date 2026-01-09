@@ -1,13 +1,12 @@
 #include "core/fenwick.h"
 #include "core/time_utils.h"
-// Updated include path to the new Access Header
 #include "entities/access/flights_access.h"
 #include <core/dataset.h>
 #include <core/indexer.h>
 #include <glib.h>
 #include <stdio.h>
 #include <time.h>
-#include <string.h> // Added for strcmp
+#include <string.h>
 
 struct ftree
 {

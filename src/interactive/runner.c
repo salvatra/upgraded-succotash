@@ -9,7 +9,7 @@
 
 #include "core/dataset.h"
 #include "core/utils.h"
-#include "io/manager.h" // Logic for loadAllDatasets
+#include "io/manager.h"
 
 #include "interactive/session.h"
 #include "interactive/shell.h"
@@ -18,10 +18,8 @@
 
 void interactive_run(void)
 {
-    // 1. Setup Signals
     signal(SIGPIPE, SIG_IGN);
 
-    // 2. UI Init
     clear_screen();
     printf(ANSI_BOLD "Welcome to the Flight Management System\n" ANSI_RESET);
 
@@ -29,7 +27,6 @@ void interactive_run(void)
     char *saved_path = load_dataset_path();
     char *dataset_path = NULL;
 
-    // 3. Dataset Loading Loop
     while (1)
     {
         char prompt[1024];
@@ -49,12 +46,11 @@ void interactive_run(void)
         if (!dataset_path)
         {
             free(saved_path);
-            return; // Exit
+            return;
         }
 
         trim_whitespace(dataset_path);
 
-        // Use saved path if enter is pressed
         if (strlen(dataset_path) == 0 && saved_path)
         {
             free(dataset_path);
@@ -88,17 +84,14 @@ void interactive_run(void)
 
     free(saved_path);
 
-    // 4. Configure Shell
     printf("Starting interactive mode...\n");
 
     rl_bind_key('\t', rl_menu_complete);
     rl_sort_completion_matches = 0;
     rl_attempted_completion_function = main_completion;
 
-    // 5. Hand off to Shell
     interactive_mode(&ds, &dataset_path);
 
-    // 6. Cleanup
     if (ds)
         cleanupDataset(ds);
     free(dataset_path);

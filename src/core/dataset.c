@@ -1,13 +1,9 @@
 #include "core/dataset.h"
 #include "core/internal/dataset_internal.h"
 #include "core/statistics.h"
-
 #include <glib.h>
 #include <stdlib.h>
 #include <string.h>
-
-// --- EXPLICIT INCLUDES FOR ACCESSORS ---
-// CRITICAL: These headers declare functions like getAirport, getFlight, etc.
 #include "entities/access/aircrafts_access.h"
 #include "entities/access/airports_access.h"
 #include "entities/access/flights_access.h"
@@ -139,7 +135,6 @@ const Airport *dataset_get_airport(const Dataset *ds, const char *code)
 {
   if (!ds || !ds->airports || !code)
     return NULL;
-  // This line caused the error implicitly if airports_access.h was missing
   return getAirport(code, ds->airports);
 }
 

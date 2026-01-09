@@ -16,11 +16,12 @@
 #include "core/time_utils.h"
 #include "core/indexer.h"
 #include "core/fenwick.h"
-#include "validation.h"
+#include "io/validation/validation_utils.h"
+#include "io/validation/airports_validator.h"
 #include "queries/queries.h"
 #include "queries/query4.h"
 #include "queries/query5.h"
-#include "io/manager.h" // <--- Added this include
+#include "io/manager.h"
 
 #define CLEAR clear_screen()
 
@@ -289,8 +290,6 @@ int interactive_mode(Dataset **ds_ref, char **dataset_path_ptr)
 
                         *ds_ref = initDataset();
                         gint errors = 0;
-
-                        // Using function from io/manager.h
                         loadAllDatasets(*ds_ref, &errors, input, FALSE);
 
                         build_query_context(*ds_ref, &aircraftsArray, &flightCounts, &airportFtrees, &q4_data, &airlineDelays, &natTable);
@@ -312,7 +311,6 @@ int interactive_mode(Dataset **ds_ref, char **dataset_path_ptr)
                     free(readline("Press ENTER to continue..."));
                 }
             }
-            // --- EXIT ---
             else if (!strcmp(input, "exit") || !strcmp(input, "quit") || !strcmp(input, "5"))
             {
                 break;

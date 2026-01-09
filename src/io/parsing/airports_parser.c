@@ -2,13 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
-
 #include "entities/access/airports_access.h"
 #include "entities/internal/airports_internal.h"
 #include "io/parsing/parser_utils.h"
-#include "validation.h"
+#include "io/validation/validation_utils.h"
+#include "io/validation/airports_validator.h"
 
-// Helper for cleaning up partial data on error
 static void cleanupAirportData(Airport *data)
 {
   if (data)

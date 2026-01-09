@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <validation.h>
 
 gchar *query3Aux(const gchar *code, const Dataset *ds)
 {

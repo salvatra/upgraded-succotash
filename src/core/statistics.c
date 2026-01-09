@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <glib.h>
 
-// Corresponds to the typedef in statistics.h and dataset.h
 struct airport_passenger_stats
 {
     long arrivals;
@@ -65,7 +64,6 @@ GHashTable *calculate_airport_traffic(const GHashTable *reservations,
             if (!flight)
                 continue;
 
-            // Check for cancellation
             const char *status = getFlightStatus(flight);
             if (status && strcmp(status, "Cancelled") == 0)
             {

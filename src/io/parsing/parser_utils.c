@@ -253,7 +253,6 @@ void parsed_passenger_free(ParsedPassengerF *pf)
     g_free(pf);
 }
 
-// --- Reservations ---
 struct ParsedReservation
 {
     gchar *fields[8];
@@ -270,14 +269,12 @@ gchar **parseFlightIds(const gchar *field)
     g_strstrip(copy);
     size_t len = strlen(copy);
 
-    /* remove brackets */
     if (len >= 2 && copy[0] == '[' && copy[len - 1] == ']')
     {
         copy[len - 1] = '\0';
         memmove(copy, copy + 1, len - 1);
     }
 
-    /* split by ", " */
     gchar **raw_ids = g_strsplit(copy, ", ", -1);
     GPtrArray *arr = g_ptr_array_new_with_free_func(g_free);
 
@@ -286,7 +283,6 @@ gchar **parseFlightIds(const gchar *field)
         gchar *t = g_strdup(raw_ids[i]);
         g_strstrip(t);
 
-        /* remove quotes */
         size_t tlen = strlen(t);
         if (tlen >= 2 && t[0] == '\'' && t[tlen - 1] == '\'')
         {

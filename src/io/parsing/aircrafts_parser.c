@@ -2,13 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
-
 #include "entities/access/aircrafts_access.h"
 #include "entities/internal/aircrafts_internal.h"
 #include "io/parsing/parser_utils.h"
-#include "validation.h"
+#include "io/validation/validation_utils.h"
+#include "io/validation/aircrafts_validator.h"
 
-// Helper
 static void cleanupAircraftData(Aircraft *data)
 {
     if (data)

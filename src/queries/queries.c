@@ -193,7 +193,8 @@ void runAllQueries(Dataset *ds, const char *filePath,
       int size;
       char sep = isSpecial ? '=' : ';';
       AircraftStats **top = query2(N, aircraftsArray, (arg2 && *arg2) ? arg2 : NULL, &size, flightCounts);
-      if (top && size > 0)
+
+      if (size > 0 && top)
       {
         for (int i = 0; i < size; i++)
         {
@@ -203,10 +204,13 @@ void runAllQueries(Dataset *ds, const char *filePath,
                   get_aircraftstats_model(top[i]), sep,
                   get_aircraftstats_count(top[i]));
         }
-        free_aircraftstats_array(top, size);
       }
       else
+      {
         fprintf(output, "\n");
+      }
+
+      free_aircraftstats_array(top, size);
     }
     else if (queryNumber == 3)
     {

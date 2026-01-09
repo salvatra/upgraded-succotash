@@ -8,7 +8,9 @@
 #include "entities/internal/reservations_internal.h"
 #include "entities/access/flights_access.h"
 #include "io/parsing/parser_utils.h"
-#include "validation.h"
+#include "io/validation/validation_utils.h"
+#include "io/validation/reservations_validator.h"
+#include "io/validation/passengers_validator.h"
 
 GHashTable *readReservations(const char *filename,
                              GHashTable *passengersTable,
@@ -52,13 +54,10 @@ GHashTable *readReservations(const char *filename,
 
         gboolean invalid = FALSE;
 
-        /* --- Step 1: Reservation ID --- */
         if (!checkReservationId(fields[0]))
             invalid = TRUE;
 
-        /* --- Step 2: Document number --- */
         int docNo = 0;
-        // Uses checkDocumentNo from passengers_validation.h
         if (!invalid && !checkDocumentNo(fields[2]))
             invalid = TRUE;
         else
@@ -66,12 +65,10 @@ GHashTable *readReservations(const char *filename,
             docNo = atoi(fields[2]);
         }
 
-        /* --- Step 3: Passenger exists --- */
         if (!invalid &&
             !g_hash_table_contains(passengersTable, GINT_TO_POINTER(docNo)))
             invalid = TRUE;
 
-        /* --- Step 4: Flight IDs (list validation) --- */
         gchar **flights = NULL;
 
         if (!invalid)
@@ -135,7 +132,6 @@ GHashTable *readReservations(const char *filename,
             continue;
         }
 
-        /* --- Create reservation --- */
         Reservation *data = g_new0(Reservation, 1);
         data->reservation_id = g_strdup(fields[0]);
         data->flight_ids = flights;

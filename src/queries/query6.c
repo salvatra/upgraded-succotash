@@ -1,8 +1,8 @@
 #include "queries/query6.h"
 #include <core/dataset.h>
-#include "entities/access/reservations_access.h" // Updated include
-#include "entities/access/passengers_access.h"   // Updated include
-#include "entities/access/flights_access.h"      // Updated include
+#include "entities/access/reservations_access.h"
+#include "entities/access/passengers_access.h"
+#include "entities/access/flights_access.h"
 #include <ctype.h>
 #include <string.h>
 #include <stdio.h>

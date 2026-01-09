@@ -6,7 +6,7 @@
 #include <tests/comparison.h>
 #include <tests/runner.h>
 #include <tests/stats.h>
-#include <io/manager.h> // <--- Added this include
+#include <io/manager.h>
 
 typedef struct
 {
@@ -58,7 +58,6 @@ void tests_run(TestRunner *runner, const char *datasetPath,
   gint errors = 0;
   Dataset *ds = initDataset();
 
-  // Now visible via io/manager.h
   loadAllDatasets(ds, &errors, datasetPath, TRUE);
 
   printf("Datasets loaded and validated.\n\n");

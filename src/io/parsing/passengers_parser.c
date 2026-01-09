@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
-
 #include "entities/access/passengers_access.h"
 #include "entities/internal/passengers_internal.h"
 #include "io/parsing/parser_utils.h"
-#include "validation.h"
+#include "io/validation/validation_utils.h"
+#include "io/validation/passengers_validator.h"
 #include "core/time_utils.h"
 
 GHashTable *readPassengers(const char *filename, int *errorsFlag, GPtrArray *nationalities_list)
@@ -19,7 +19,6 @@ GHashTable *readPassengers(const char *filename, int *errorsFlag, GPtrArray *nat
     size_t len = 0;
     ssize_t read;
 
-    // Read header
     if ((read = getline(&line, &len, passengers)) == -1)
     {
         free(line);
@@ -29,7 +28,6 @@ GHashTable *readPassengers(const char *filename, int *errorsFlag, GPtrArray *nat
     g_strchomp(line);
     char *headerLine = g_strdup(line);
 
-    // We can use freePassenger because we included the access header
     GHashTable *passengersTable =
         g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, freePassenger);
 
@@ -58,7 +56,6 @@ GHashTable *readPassengers(const char *filename, int *errorsFlag, GPtrArray *nat
         gboolean invalid = FALSE;
         time_t dob_t = 0;
 
-        // --- Validations ---
         if (!checkDocumentNo(fields[0]))
             invalid = TRUE;
 
@@ -85,8 +82,7 @@ GHashTable *readPassengers(const char *filename, int *errorsFlag, GPtrArray *nat
             continue;
         }
 
-        // --- Create passenger ---
-        // Accessing struct members is allowed via internal header
+
         Passenger *data = g_new0(Passenger, 1);
 
         data->document_number = atoi(fields[0]);

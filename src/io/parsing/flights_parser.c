@@ -3,12 +3,14 @@
 #include <string.h>
 #include <time.h>
 #include <glib.h>
-
 #include "entities/access/flights_access.h"
 #include "entities/internal/flights_internal.h"
 #include "io/parsing/parser_utils.h"
 #include "core/time_utils.h"
-#include "validation.h"
+#include "io/validation/validation_utils.h"
+#include "io/validation/flights_validator.h"
+#include "io/validation/airports_validator.h"
+#include "io/validation/aircrafts_validator.h"
 
 static FlightStatus parse_status_string(const gchar *status_str)
 {
@@ -62,7 +64,6 @@ GHashTable *readFlights(const char *filename, int *errorsFlag, GHashTable *aircr
         for (int i = 0; i < 12; i++)
             fields[i] = parsed_fields_get(pf, i);
 
-        // --- VALIDATION LOGIC ---
         if (!checkFlightId(fields[0]))
             invalid = TRUE;
 
@@ -111,7 +112,6 @@ GHashTable *readFlights(const char *filename, int *errorsFlag, GHashTable *aircr
 
         if (!invalid)
         {
-            // These functions are now visible via their respective headers
             if (!checkAirportCode(fields[7]) || !checkAirportCode(fields[8]))
                 invalid = TRUE;
         }
@@ -144,7 +144,6 @@ GHashTable *readFlights(const char *filename, int *errorsFlag, GHashTable *aircr
             continue;
         }
 
-        // --- STRUCT CREATION ---
         Flight *data = g_new0(Flight, 1);
 
         data->id = g_strdup(fields[0]);
