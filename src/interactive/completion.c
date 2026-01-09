@@ -7,22 +7,58 @@
 #include "interactive/completion.h"
 #include "core/dataset.h"
 
+// Local cache for autocompletion strings
+// We own these arrays and the strings inside them (via g_strdup)
 static GPtrArray *active_airport_codes = NULL;
 static GPtrArray *active_aircraft_manufs = NULL;
 static GPtrArray *active_nationalities = NULL;
 
-void update_completion_context(Dataset *ds)
+// Helper to populate a local cache using the Dataset Iterator API
+static GPtrArray *populate_cache(Dataset *ds, DatasetStringIterator *(*iter_ctor)(Dataset *))
 {
     if (!ds)
+        return NULL;
+
+    GPtrArray *cache = g_ptr_array_new_with_free_func(g_free);
+    DatasetStringIterator *it = iter_ctor(ds);
+    const char *str;
+
+    while ((str = dataset_string_iter_next(it)) != NULL)
     {
-        active_airport_codes = NULL;
-        active_aircraft_manufs = NULL;
-        active_nationalities = NULL;
-        return;
+        // Duplicate string to ensure completion context owns its data
+        g_ptr_array_add(cache, g_strdup(str));
     }
-    active_airport_codes = get_dataset_airport_codes(ds);
-    active_aircraft_manufs = get_dataset_aircraft_manufacturers(ds);
-    active_nationalities = get_dataset_nationalities(ds);
+
+    dataset_string_iter_free(it);
+    return cache;
+}
+
+void update_completion_context(Dataset *ds)
+{
+    // 1. Clean up existing cache
+    if (active_airport_codes)
+    {
+        g_ptr_array_unref(active_airport_codes);
+        active_airport_codes = NULL;
+    }
+    if (active_aircraft_manufs)
+    {
+        g_ptr_array_unref(active_aircraft_manufs);
+        active_aircraft_manufs = NULL;
+    }
+    if (active_nationalities)
+    {
+        g_ptr_array_unref(active_nationalities);
+        active_nationalities = NULL;
+    }
+
+    if (!ds)
+        return;
+
+    // 2. Re-populate using the safe public API
+    active_airport_codes = populate_cache(ds, dataset_airport_codes_iter_new);
+    active_aircraft_manufs = populate_cache(ds, dataset_aircraft_manufacturers_iter_new);
+    active_nationalities = populate_cache(ds, dataset_nationalities_iter_new);
 }
 
 // --- Generators  ---
