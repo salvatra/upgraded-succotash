@@ -1,10 +1,12 @@
-#include <core/statistics.h>
-#include <entities/reservations.h>
-#include <entities/flights.h>
+#include "core/statistics.h"
+#include "entities/access/reservations_access.h"
+#include "entities/access/flights_access.h"
 #include <string.h>
 #include <stdio.h>
+#include <glib.h>
 
-struct AiportPassengStats
+// Corresponds to the typedef in statistics.h and dataset.h
+struct airport_passenger_stats
 {
     long arrivals;
     long departures;
@@ -29,7 +31,6 @@ static AirportPassengerStats *getOrCreateStats(GHashTable *stats, const char *co
 GHashTable *calculate_airport_traffic(const GHashTable *reservations,
                                       const GHashTable *flights)
 {
-
     if (!reservations || !flights)
     {
         return NULL;
@@ -55,7 +56,6 @@ GHashTable *calculate_airport_traffic(const GHashTable *reservations,
 
         for (int i = 0; flightIds[i] != NULL; i++)
         {
-
             if (!flightIds[i] || strlen(flightIds[i]) == 0)
             {
                 continue;
@@ -65,7 +65,9 @@ GHashTable *calculate_airport_traffic(const GHashTable *reservations,
             if (!flight)
                 continue;
 
-            if (strcmp(getFlightStatus(flight), "Cancelled") == 0)
+            // Check for cancellation
+            const char *status = getFlightStatus(flight);
+            if (status && strcmp(status, "Cancelled") == 0)
             {
                 continue;
             }

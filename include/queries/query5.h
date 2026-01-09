@@ -16,7 +16,7 @@
 
 #include <glib.h>
 #include <stdio.h>
-#include "entities/flights.h"
+#include "entities/access/flights_access.h"
 
 /**
  * @brief Pre-calculates and sorts airline delay statistics.

@@ -1,13 +1,11 @@
 /**
  * @file statistics.h
- * @brief Logic for calculating global aggregated statistics (e.g., Airport Traffic).
+ * @brief Logic for calculating and managing airport traffic statistics.
  *
- * This module is responsible for performing heavy data aggregation tasks during the
- * dataset loading phase. Specifically, it cross-references Reservations with Flights
- * to calculate the total number of passengers arriving and departing from each airport.
- *
- * @note The results generated here are cached in the Dataset to allow O(1) access
- * during Query 1 execution, avoiding expensive runtime iteration.
+ * This header defines the interface for the statistics module, which is responsible
+ * for aggregating passenger movements (arrivals and departures) across the entire
+ * network. It defines the opaque `AirportPassengerStats` structure and functions
+ * to compute these stats from the raw Reservations and Flights data.
  */
 
 #ifndef STATISTICS_H
@@ -16,54 +14,63 @@
 #include <glib.h>
 
 /**
- * @brief Opaque structure holding passenger traffic statistics for a specific airport.
+ * @typedef AirportPassengerStats
+ * @brief Opaque structure holding traffic statistics for a single airport.
  *
- * Encapsulates the counters for:
- * - Total passengers arriving.
- * - Total passengers departing.
+ * This structure accumulates the total number of passengers arriving at and
+ * departing from a specific airport. The internal definition is hidden in
+ * `src/core/statistics.c`.
+ *
+ * It is typically stored as a value in a GHashTable where the key is the airport code.
  */
-typedef struct AiportPassengStats AirportPassengerStats;
+// Use the same struct tag as defined in dataset.h to avoid conflicts
+typedef struct airport_passenger_stats AirportPassengerStats;
 
 /**
  * @brief Memory cleanup function for AirportPassengerStats.
  *
- * Compatible with @c GDestroyNotify. Frees the allocated memory for the statistics structure.
+ * Compatible with `GDestroyNotify`. Frees the memory allocated for a single
+ * `AirportPassengerStats` instance.
  *
- * @param data Pointer to the @c AirportPassengerStats to be freed.
+ * @param data A pointer to the `AirportPassengerStats` structure to free.
+ * If NULL, the function does nothing.
  */
 void freeAirportPassengerStats(gpointer data);
 
 /**
- * @brief Generates the Airport Traffic statistics table.
+ * @brief Calculates traffic statistics for all airports based on reservations.
  *
- * This function iterates through all reservations, links them to their corresponding flights,
- * and aggregates passenger counts for both origin and destination airports.
+ * Iterates through all reservations, resolves the associated flights, and updates
+ * the arrival/departure counts for the corresponding origin and destination airports.
  *
- * @note This is a computationally intensive operation (O(R), where R is the number of reservations).
- * It handles logic such as ignoring cancelled flights or invalid reservations.
+ * @note This is a computationally intensive operation typically performed once during
+ * the dataset loading phase.
  *
- * @param reservations The raw Hash Table of reservations (from Dataset).
- * @param flights The raw Hash Table of flights (from Dataset).
- * @return A new @c GHashTable mapping Airport Codes (char*) -> @c AirportPassengerStats*.
- * Returns @c NULL if input tables are missing.
+ * @param reservations The hash table containing all `Reservation` entities.
+ * @param flights The hash table containing all `Flight` entities.
+ * @return A new `GHashTable` where:
+ * - **Key**: `gchar*` - The Airport Code (e.g., "LIS").
+ * - **Value**: `AirportPassengerStats*` - The computed statistics.
+ * The caller is responsible for destroying this table using `g_hash_table_destroy()`.
  */
-GHashTable *calculate_airport_traffic(const GHashTable *reservations,
-                                      const GHashTable *flights);
+GHashTable *calculate_airport_traffic(const GHashTable *reservations, const GHashTable *flights);
 
 /**
- * @brief Accessor for the total number of arriving passengers.
+ * @brief Getter for the total number of arriving passengers.
  *
  * @param s Pointer to the statistics structure.
- * @return The number of arrivals. Returns 0 if @p s is NULL.
+ * @return The total count of passengers who arrived at this airport.
+ * Returns 0 if `s` is NULL.
  */
 long getAirportArrivals(const AirportPassengerStats *s);
 
 /**
- * @brief Accessor for the total number of departing passengers.
+ * @brief Getter for the total number of departing passengers.
  *
  * @param s Pointer to the statistics structure.
- * @return The number of departures. Returns 0 if @p s is NULL.
+ * @return The total count of passengers who departed from this airport.
+ * Returns 0 if `s` is NULL.
  */
 long getAirportDepartures(const AirportPassengerStats *s);
 
-#endif // STATISTICS_H
+#endif

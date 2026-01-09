@@ -1,11 +1,12 @@
 #include <queries/query1.h>
 #include <core/dataset.h>
 #include <core/statistics.h>
-#include <entities/airports.h>
+#include "entities/access/airports_access.h" // Updated include
 #include <string.h>
 #include <stdio.h>
 
-gchar *query1(const gchar *code, const Dataset *ds) {
+gchar *query1(const gchar *code, const Dataset *ds)
+{
 
   const Airport *airport = dataset_get_airport(ds, code);
   if (!airport)

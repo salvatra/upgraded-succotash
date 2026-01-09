@@ -20,6 +20,7 @@
 #include "queries/queries.h"
 #include "queries/query4.h"
 #include "queries/query5.h"
+#include "io/manager.h" // <--- Added this include
 
 #define CLEAR clear_screen()
 
@@ -288,6 +289,8 @@ int interactive_mode(Dataset **ds_ref, char **dataset_path_ptr)
 
                         *ds_ref = initDataset();
                         gint errors = 0;
+
+                        // Using function from io/manager.h
                         loadAllDatasets(*ds_ref, &errors, input, FALSE);
 
                         build_query_context(*ds_ref, &aircraftsArray, &flightCounts, &airportFtrees, &q4_data, &airlineDelays, &natTable);

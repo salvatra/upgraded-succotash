@@ -1,40 +1,21 @@
-#include "entities/parser.h"
-#include <entities/airports.h>
-#include <glib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <validation.h>
+#include <glib.h>
 
-struct airport
-{
-  gchar *code;
-  gchar *name;
-  gchar *city;
-  gchar *country;
-  gchar *type;
-};
+#include "entities/access/airports_access.h"
+#include "entities/internal/airports_internal.h"
+#include "io/parsing/parser_utils.h"
+#include "validation.h"
 
-void freeAirport(gpointer data)
-{
-  if (!data)
-    return;
-  Airport *airport = data;
-  g_free(airport->code);
-  g_free(airport->city);
-  g_free(airport->country);
-  g_free(airport->name);
-  g_free(airport->type);
-  g_free(airport);
-}
-
+// Helper for cleaning up partial data on error
 static void cleanupAirportData(Airport *data)
 {
   if (data)
     freeAirport(data);
 }
 
-GHashTable *readAirports(const gchar *filename, gint *errorsFlag,
-                         GPtrArray *codes)
+GHashTable *readAirports(const gchar *filename, gint *errorsFlag, GPtrArray *codes)
 {
   GHashTable *airportsTable =
       g_hash_table_new_full(g_str_hash, g_str_equal, g_free, freeAirport);
@@ -128,37 +109,4 @@ GHashTable *readAirports(const gchar *filename, gint *errorsFlag,
   free(line);
   fclose(file);
   return airportsTable;
-}
-
-const Airport *getAirport(const gchar *code, const GHashTable *airportsTable)
-{
-  if (!code || !airportsTable)
-    return NULL;
-
-  return (const Airport *)g_hash_table_lookup((GHashTable *)airportsTable, code);
-}
-
-const gchar *getAirportCode(const Airport *a)
-{
-  return a ? a->code : NULL;
-}
-
-const gchar *getAirportName(const Airport *a)
-{
-  return a ? a->name : NULL;
-}
-
-const gchar *getAirportCity(const Airport *a)
-{
-  return a ? a->city : NULL;
-}
-
-const gchar *getAirportCountry(const Airport *a)
-{
-  return a ? a->country : NULL;
-}
-
-const gchar *getAirportType(const Airport *a)
-{
-  return a ? a->type : NULL;
 }

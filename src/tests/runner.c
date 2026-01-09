@@ -6,19 +6,23 @@
 #include <tests/comparison.h>
 #include <tests/runner.h>
 #include <tests/stats.h>
+#include <io/manager.h> // <--- Added this include
 
-typedef struct {
+typedef struct
+{
   TestStats *stats;
   const char *expectedPath;
 } TestContext;
 
-struct test_runner {
+struct test_runner
+{
   TestStats *stats;
   GTimer *total_timer;
 };
 
 static void on_query_complete(int queryNum, int lineNum, double elapsed,
-                              void *ctx) {
+                              void *ctx)
+{
   TestContext *tc = (TestContext *)ctx;
 
   stats_add_timing(tc->stats, queryNum, elapsed);
@@ -36,7 +40,8 @@ static void on_query_complete(int queryNum, int lineNum, double elapsed,
   stats_add_result(tc->stats, queryNum, lineNum, passed ? 0 : diff_line);
 }
 
-TestRunner *tests_init(void) {
+TestRunner *tests_init(void)
+{
   TestRunner *runner = g_new0(TestRunner, 1);
   runner->stats = stats_init();
   runner->total_timer = g_timer_new();
@@ -44,16 +49,18 @@ TestRunner *tests_init(void) {
 }
 
 void tests_run(TestRunner *runner, const char *datasetPath,
-               const char *inputPath, const char *expectedPath) {
+               const char *inputPath, const char *expectedPath)
+{
   g_timer_start(runner->total_timer);
   initReport();
 
   printf("Loading datasets...\n");
   gint errors = 0;
   Dataset *ds = initDataset();
+
+  // Now visible via io/manager.h
   loadAllDatasets(ds, &errors, datasetPath, TRUE);
 
- // if (!validateDataset(ds)) errors = 1;
   printf("Datasets loaded and validated.\n\n");
   printf("Running and checking queries...\n");
 
@@ -68,13 +75,16 @@ void tests_run(TestRunner *runner, const char *datasetPath,
   g_timer_stop(runner->total_timer);
 }
 
-void tests_print_report(TestRunner *runner) {
+void tests_print_report(TestRunner *runner)
+{
   double elapsed = g_timer_elapsed(runner->total_timer, NULL);
   stats_print_report(runner->stats, elapsed);
 }
 
-void tests_free(TestRunner *runner) {
-  if (runner) {
+void tests_free(TestRunner *runner)
+{
+  if (runner)
+  {
     stats_free(runner->stats);
     g_timer_destroy(runner->total_timer);
     g_free(runner);

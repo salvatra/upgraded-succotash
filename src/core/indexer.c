@@ -1,6 +1,6 @@
 #include <core/indexer.h>
 #include <core/dataset.h>
-#include <entities/flights.h>
+#include <entities/access/flights_access.h>
 #include <core/time_utils.h>
 #include <glib.h>
 #include <string.h>

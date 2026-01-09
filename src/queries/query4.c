@@ -1,8 +1,8 @@
 #include <queries/query4.h>
 #include <core/time_utils.h>
-#include <entities/reservations.h>
-#include <entities/flights.h>
-#include <entities/passengers.h>
+#include <entities/access/reservations_access.h>
+#include <entities/access/flights_access.h>
+#include <entities/access/passengers_access.h>
 #include <core/dataset.h>
 #include <stdlib.h>
 #include <string.h>

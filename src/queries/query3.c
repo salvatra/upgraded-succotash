@@ -1,7 +1,7 @@
 #include <core/dataset.h>
 #include <core/fenwick.h>
 #include <core/time_utils.h>
-#include <entities/airports.h>
+#include <entities/access/airports_access.h>
 #include <core/indexer.h>
 #include <glib.h>
 #include <queries/query3.h>

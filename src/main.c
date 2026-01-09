@@ -2,11 +2,14 @@
 #include <core/dataset.h>
 #include <core/report.h>
 #include <queries/queries.h>
+#include <io/manager.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-int main(int argc, char *argv[]) {
-  if (argc != 3) {
+int main(int argc, char *argv[])
+{
+  if (argc != 3)
+  {
     printf("Needs dataset and input file paths\n");
     return EXIT_FAILURE;
   }

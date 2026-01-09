@@ -1,6 +1,8 @@
 #include <queries/query2.h>
+#include "entities/access/aircrafts_access.h" // Added required access header
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 struct aircraftstats
 {

@@ -10,8 +10,8 @@
 #ifndef QUERY2_H
 #define QUERY2_H
 
-#include <entities/aircrafts.h>
-#include <entities/flights.h>
+#include <entities/access/aircrafts_access.h>
+#include <entities/access/flights_access.h>
 #include <glib.h>
 
 /**

@@ -4,10 +4,10 @@
 #include <time.h>
 #define _XOPEN_SOURCE 700
 #include <core/utils.h>
-#include <entities/aircrafts.h>
-#include <entities/flights.h>
-#include <entities/passengers.h>
-#include <entities/reservations.h>
+#include <entities/access/aircrafts_access.h>
+#include <entities/access/flights_access.h>
+#include <entities/access/passengers_access.h>
+#include <entities/access/reservations_access.h>
 #include <glib.h>
 #include <stdio.h>
 #include <string.h>

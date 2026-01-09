@@ -1,4 +1,5 @@
 #include "queries/query5.h"
+#include "entities/access/flights_access.h" // Added required access header
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
